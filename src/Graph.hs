@@ -50,57 +50,50 @@ module Graph
         }
 
       add :: Vertex -> Graph -> Graph
-      add v (Graph {neighs = neighs, edges = edges}) =
-        Graph {
-          neighs = case Map.lookup v neighs of
-            Just _  -> neighs
-            Nothing -> Map.insert v Set.empty neighs
-          ,
-          edges = edges
-        }
-      --
+      add v g = g {
+        neighs = case Map.lookup v (neighs g) of
+          Just _  -> (neighs g)
+          Nothing -> Map.insert v Set.empty (neighs g)
+      }
+
       addEdge :: EdgeEnds -> Graph -> Graph
-      addEdge (EdgeEnds v_1 v_2) (Graph {neighs = neighs, edges = edges}) =
-        Graph {
-          neighs = case Map.lookup v_1 neighs of
-            Just s -> Map.insert v_1 s neighs
-            Nothing -> neighs
-          ,
-          edges = edges
+      addEdge (EdgeEnds v_1 v_2) g = g {
+        neighs = case Map.lookup v_1 (neighs g) of
+          Just s -> Map.insert v_1 s (neighs g)
+          Nothing -> (neighs g)
       }
 
       addEdge' :: Vertex -> Vertex -> Graph -> Graph
       addEdge' v_1 v_2 = addEdge (EdgeEnds v_1 v_2)
 
+      defaultEdge = Edge {edgeColor = Black, edgeLabel = "", edgeSupplementaryLabel = ""}
+
       addEdgeLabel :: EdgeEnds -> EdgeLabel -> Graph -> Graph
-      addEdgeLabel ends label (Graph {neighs = neighs, edges = edges}) =
-        Graph {
-          neighs = neighs
-          ,
-          edges =
-            let found = Map.lookup ends edges
-                insertRho =
-                  Map.insert
-                    ends
-                    (Edge {edgeColor = Orange, edgeLabel = label,edgeSupplementaryLabel=""})
-                    edges
-                insertReverseOrange =
-                  Map.insert
-                  (EdgeEnds (to ends) (from ends))
-                  (Edge {edgeColor = Orange, edgeLabel = "𝜌",edgeSupplementaryLabel=""})
-                  edges
-                insertBlack =
-                  Map.insert
+      addEdgeLabel ends label g = g {
+        edges =
+          let found = Map.lookup ends (edges g)
+              insertRho =
+                Map.insert
                   ends
-                  (Edge {edgeColor = Black, edgeLabel = label, edgeSupplementaryLabel=""})
-            in
-              case found of
-                Just _ -> edges
-                Nothing ->
-                  case label of
-                    "𝜌" -> insertRho
-                    otherwise ->
-                       insertBlack insertReverseOrange
+                  (defaultEdge {edgeColor = Orange, edgeLabel = label})
+                  (edges g)
+              insertReverseOrange =
+                Map.insert
+                (EdgeEnds (to ends) (from ends))
+                (defaultEdge {edgeColor = Orange, edgeLabel = label})
+                (edges g)
+              insertBlack =
+                Map.insert
+                ends
+                defaultEdge {edgeLabel = label}
+          in
+            case found of
+              Just _ -> (edges g)
+              Nothing ->
+                case label of
+                  "𝜌" -> insertRho
+                  otherwise ->
+                     insertBlack insertReverseOrange
       }
 
       addEdgeLabel' :: Vertex -> Vertex -> EdgeLabel -> Graph -> Graph
@@ -111,7 +104,7 @@ module Graph
         addEdgeLabel' v_1 v_2 label $
         addEdge' v_1 v_2 g
 
-      
+
 
 
 
