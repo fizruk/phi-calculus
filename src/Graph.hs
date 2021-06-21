@@ -1,114 +1,76 @@
-module Graph
-    where
-      import qualified Data.Map as Map
-      import Data.Set (Set)
-      import qualified Data.Set as Set
+module Graph where
+  -- TODO implement graph with search adjacent by vertex index and attr name
+  import qualified Data.Map.Strict as Map
+  import qualified Data.Set as Set
 
-      -- lambda expression attached to a vertex
-      type Lam = Maybe String
+  type VertexId = Int
+  type VertexName = String
+  type AttributeName = String
+  type VertexData = String
 
-      -- vertices are just numbers
-      type Vertex = Int
+  data Graph =
+    Graph {
+    -- adjacent vertex by attribute
+    attributes :: Map.Map (VertexId, AttributeName) ToVertex,
+    vertexIdByName :: Map.Map String VertexId,
+    vertexData :: Map.Map VertexId VertexData,
+    vertexCount :: Int
+  } deriving (Show)
 
-      -- color of an edge
-      data EdgeColor = Black | Blue | Orange deriving (Show, Eq)
+  data ToVertex =
+    ToVertex {
+    vertexId :: VertexId,
+    edgeColor :: EdgeColor
+  } deriving (Show)
 
-      -- attribute that this edge denotes
-      type EdgeLabel = String
+  data EdgeColor = Black | Orange | Blue deriving (Show)
 
-      -- color, attribute
-      data Edge =
-        Edge {
-          edgeColor :: EdgeColor,
-          edgeLabel :: EdgeLabel,
-          edgeSupplementaryLabel :: EdgeLabel
-        } deriving (Show)
+  defaultToVertex =
+    ToVertex {
+    vertexId = -1,
+    edgeColor = Black
+  }
 
-      -- find info about an edge with two given vertices
+  emptyGraph :: Graph
+  emptyGraph =
+    Graph {
+    attributes = Map.fromList  ([((-1,""), defaultToVertex)]),
+    vertexIdByName = Map.empty,
+    vertexData = Map.empty,
+    vertexCount = 0
+  }
 
-      data EdgeEnds =
-        EdgeEnds {
-          from :: Vertex,
-          to :: Vertex
-        } deriving (Show, Ord, Eq)
-
-
-      -- just mappings between vertices
-      -- all vertices are guarranteed to be unique
-      data Graph =
-        Graph {
-          neighs :: Map.Map Vertex (Set Vertex),
-          edges :: Map.Map EdgeEnds Edge
-        } deriving(Show)
-
-
-      emptyGraph :: Graph
-      emptyGraph =
-        Graph {
-          neighs = Map.empty,
-          edges = Map.empty
-        }
-
-      add :: Vertex -> Graph -> Graph
-      add v g = g {
-        neighs = case Map.lookup v (neighs g) of
-          Just _  -> (neighs g)
-          Nothing -> Map.insert v Set.empty (neighs g)
-      }
-
-      addEdge :: EdgeEnds -> Graph -> Graph
-      addEdge (EdgeEnds v_1 v_2) g = g {
-        neighs = case Map.lookup v_1 (neighs g) of
-          Just s -> Map.insert v_1 s (neighs g)
-          Nothing -> (neighs g)
-      }
-
-      addEdge' :: Vertex -> Vertex -> Graph -> Graph
-      addEdge' v_1 v_2 = addEdge (EdgeEnds v_1 v_2)
-
-      defaultEdge = Edge {edgeColor = Black, edgeLabel = "", edgeSupplementaryLabel = ""}
-
-      addEdgeLabel :: EdgeEnds -> EdgeLabel -> Graph -> Graph
-      addEdgeLabel ends label g = g {
-        edges =
-          let found = Map.lookup ends (edges g)
-              insertRho =
-                Map.insert
-                  ends
-                  (defaultEdge {edgeColor = Orange, edgeLabel = label})
-                  (edges g)
-              insertReverseOrange =
-                Map.insert
-                (EdgeEnds (to ends) (from ends))
-                (defaultEdge {edgeColor = Orange, edgeLabel = label})
-                (edges g)
-              insertBlack =
-                Map.insert
-                ends
-                defaultEdge {edgeLabel = label}
-          in
-            case found of
-              Just _ -> (edges g)
-              Nothing ->
-                case label of
-                  "𝜌" -> insertRho
-                  otherwise ->
-                     insertBlack insertReverseOrange
-      }
-
-      addEdgeLabel' :: Vertex -> Vertex -> EdgeLabel -> Graph -> Graph
-      addEdgeLabel' v_1 v_2 = addEdgeLabel (EdgeEnds v_1 v_2)
-
-      bind :: Vertex -> Vertex -> EdgeLabel -> Graph -> Graph
-      bind v_1 v_2 label g =
-        addEdgeLabel' v_1 v_2 label $
-        addEdge' v_1 v_2 g
+  -- vertex as string
+  addVertex :: VertexName -> Graph -> Graph
+  addVertex vertexName g =
+    g {
+    vertexIdByName = Map.insert vertexName (vertexCount g) (vertexIdByName g),
+    vertexData = Map.insert (vertexCount g) "" (vertexData g),
+    vertexCount = (vertexCount g) + 1
+  }
 
 
-
-
-
-
-
-
-      -- ? как изменить конкретное поле "объекта"
+  bind :: VertexName -> VertexName -> AttributeName -> Graph -> Graph
+  bind v1 v2 attr g =
+    g {
+    attributes =
+      let
+        id1 =
+          case Map.lookup v1 (vertexIdByName g) of
+            Just s -> s
+            otherwise -> -1
+        id2 =
+          case Map.lookup v2 (vertexIdByName g) of
+            Just s -> s
+            otherwise -> -1
+        insertFrom id1 =
+          Map.insert (id1, attr) ToVertex {vertexId = id2, edgeColor = Black}
+        insertTo id1 =
+          Map.insert (id2, "𝜌") ToVertex {vertexId = id1, edgeColor = Orange}
+        insertRhoFrom id1 =
+          Map.insert (id1, "𝜌") ToVertex {vertexId = id2, edgeColor = Orange}
+      in
+        case attr of
+          "𝜌" -> insertRhoFrom id1 (attributes g)
+          otherwise -> insertFrom id1 $ insertTo id1 (attributes g)
+  }
