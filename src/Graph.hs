@@ -4,73 +4,134 @@ module Graph where
   import qualified Data.Set as Set
 
   type VertexId = Int
-  type VertexName = String
   type AttributeName = String
   type VertexData = String
+  type EdgeId = Int
+  type SpecialLabel = String
+  data EdgeColor = Black | Orange | Blue deriving (Show)
+  type EdgeEnds = (VertexId, VertexId)
+
+  data Edge =
+    Edge {
+    ends :: EdgeEnds,
+    attribute :: AttributeName,
+    specialLabel :: SpecialLabel,
+    color :: EdgeColor
+  } deriving (Show)
 
   data Graph =
     Graph {
     -- adjacent vertex by attribute
-    attributes :: Map.Map (VertexId, AttributeName) ToVertex,
-    vertexIdByName :: Map.Map String VertexId,
     vertexData :: Map.Map VertexId VertexData,
-    vertexCount :: Int
+    edgeData :: Map.Map EdgeId Edge,
+    vertexCount :: Int,
+    edgeCount :: Int,
+    queried :: Set.Set String
   } deriving (Show)
 
-  data ToVertex =
-    ToVertex {
-    vertexId :: VertexId,
-    edgeColor :: EdgeColor
-  } deriving (Show)
-
-  data EdgeColor = Black | Orange | Blue deriving (Show)
-
-  defaultToVertex =
-    ToVertex {
-    vertexId = -1,
-    edgeColor = Black
+  defaultEdge =
+    Edge {
+    ends = (-1, -1),
+    attribute = "",
+    specialLabel = "",
+    color = Black
   }
 
   emptyGraph :: Graph
   emptyGraph =
     Graph {
-    attributes = Map.fromList  ([((-1,""), defaultToVertex)]),
-    vertexIdByName = Map.empty,
     vertexData = Map.empty,
-    vertexCount = 0
+    edgeData = Map.empty,
+    vertexCount = 0,
+    edgeCount = 0,
+    queried = Set.empty
   }
 
-  -- vertex as string
-  addVertex :: VertexName -> Graph -> Graph
-  addVertex vertexName g =
+  -- no vertice id arg to guarrantee uniqueness of vertices
+  addVertex :: VertexId -> Graph -> Graph
+  addVertex v1 g =
     g {
-    vertexIdByName = Map.insert vertexName (vertexCount g) (vertexIdByName g),
-    vertexData = Map.insert (vertexCount g) "" (vertexData g),
+    vertexData = Map.insert v1 "" (vertexData g)
+    ,
     vertexCount = (vertexCount g) + 1
   }
 
+  getEdge :: EdgeId -> Graph -> Edge
+  getEdge edgeId g = Map.findWithDefault defaultEdge edgeId (edgeData g)
 
-  bind :: VertexName -> VertexName -> AttributeName -> Graph -> Graph
-  bind v1 v2 attr g =
+  _rho_ :: String
+  _rho_ = "𝜌"
+
+  insertEdge :: VertexId -> VertexId -> AttributeName -> EdgeColor -> Graph -> Graph
+  insertEdge v1 v2 attr color g =
     g {
-    attributes =
-      let
-        id1 =
-          case Map.lookup v1 (vertexIdByName g) of
-            Just s -> s
-            otherwise -> -1
-        id2 =
-          case Map.lookup v2 (vertexIdByName g) of
-            Just s -> s
-            otherwise -> -1
-        insertFrom id1 =
-          Map.insert (id1, attr) ToVertex {vertexId = id2, edgeColor = Black}
-        insertTo id1 =
-          Map.insert (id2, "𝜌") ToVertex {vertexId = id1, edgeColor = Orange}
-        insertRhoFrom id1 =
-          Map.insert (id1, "𝜌") ToVertex {vertexId = id2, edgeColor = Orange}
-      in
-        case attr of
-          "𝜌" -> insertRhoFrom id1 (attributes g)
-          otherwise -> insertFrom id1 $ insertTo id1 (attributes g)
+    edgeData =
+      Map.insert
+        (edgeCount g)
+        defaultEdge {ends = (v1, v2), attribute = attr, color = color}
+        (edgeData g)
+    ,
+    edgeCount = (edgeCount g) + 1
   }
+
+  deleteEdge :: VertexId -> Graph -> Graph
+  deleteEdge v1 g =
+    g {
+    edgeData = Map.delete v1 (edgeData g)
+  }
+
+  command :: Show a => [Char] -> a -> [Char]
+  command cmdName attrs = cmdName ++ show attrs
+
+  isQueried cmd g = Set.member cmd (queried g)
+
+  bind :: VertexId -> VertexId -> AttributeName -> Graph -> Graph
+  bind v1 v2 attr g
+      | isQueried (command "bind" (v1,v2,attr)) g = g
+      | attr == _rho_ =
+          insertEdge v1 v2 attr Orange g
+      | otherwise =
+          insertEdge v1 v2 attr Black
+          $ insertEdge v2 v1 _rho_ Orange g
+
+  atom :: VertexId -> VertexData -> Graph -> Graph
+  atom v1 m1 g =
+    g {
+    vertexData = Map.insert v1 m1 (vertexData g)
+  }
+
+  dot :: EdgeId -> AttributeName -> VertexId -> EdgeId -> Graph -> Graph
+  dot e1 m v3 e2 g
+    | isQueried (command "dot" (e1, m, v3, e2)) g = g
+    | otherwise =
+          deleteEdge e1
+          $ insertEdge v3 v2 "t" Black
+          $ insertEdge v1 v3 attr Black
+          $ atom v3 ("R(ksi.t," ++ m ++ ",s)") g
+    where
+      edge1 = getEdge e1 g
+      (v1, v2) = ends edge1
+      attr = attribute edge1
+
+  copy :: EdgeId -> VertexId -> EdgeId -> Graph -> Graph
+  copy e1 v3 e2 g
+      | isQueried (command "copy" (e1, v3, e2)) g = g
+      | otherwise =
+            deleteEdge e1
+            $ insertEdge v3 v2 "" Blue
+            $ insertEdge v1 v3 attr Black g
+      where
+        edge1 = getEdge e1 g
+        (v1, v2) = ends edge1
+        attr = attribute edge1
+
+
+  -- TODO ref
+
+  -- type Locator = String
+
+
+  -- ref :: EdgeId -> VertexId -> Locator -> AttributeName -> Graph -> Graph
+  -- ref e1 v1 l a =
+  --     | isQueried (command "ref" (e1, v1, l, a)) g = g
+  --     | otherwise =
