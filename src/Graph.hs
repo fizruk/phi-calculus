@@ -49,10 +49,10 @@ module Graph where
     queried = Set.empty
   }
 
-  add :: VertexId -> Graph -> Graph
-  add v1 g =
+  add :: Graph -> Graph
+  add g =
     g {
-    vertexData = Map.insert v1 "" (vertexData g)
+    vertexData = Map.insert (vertexCount g) "" (vertexData g)
     ,
     vertexCount = (vertexCount g) + 1
   }
@@ -133,8 +133,8 @@ module Graph where
     queried = Set.insert cmdName (queried g)
   }
 
-  dot :: EdgeId -> AttributeName -> VertexId -> EdgeId -> Graph -> Graph
-  dot e1 m v3 e2 g
+  dot :: EdgeId -> AttributeName -> EdgeId -> Graph -> Graph
+  dot e1 m e2 g
     | isQueried cmdName g = g
     | otherwise =
         addQueried cmdName
@@ -142,10 +142,11 @@ module Graph where
         $ addEdge similarEdge
         $ addEdge tEdge
         $ atom v3 (specialLambda m)
-        $ add (vertexCount g) g
+        $ add g
     where
       edge1 = getEdge e1 g
       (v1, v2) = ends edge1
+      v3 = vertexCount g
       similarEdge = edge1 {ends = (v1, v3)}
       tEdge = defaultEdge {ends = (v3, v2), attribute = tAttribute}
       cmdName = getCommand "dot" (e1, m, v3, e2)
@@ -206,8 +207,8 @@ module Graph where
 
 
   -- TODO color = Green?
-  ref :: EdgeId -> VertexId -> Locator -> AttributeName -> Graph -> Graph
-  ref e1 v1 l a g
+  ref :: VertexId -> Locator -> AttributeName -> Graph -> Graph
+  ref v1 l a g
       | isQueried cmdName g = g
       | otherwise =
           addQueried cmdName
@@ -215,18 +216,21 @@ module Graph where
       where
         cmdName = getCommand "ref" (e1, v1, l, a)
         v2 = locate v1 l g
+        e1 = edgeCount g
         edge = defaultEdge {ends = (v1, v2), attribute = a, specialLabel = l}
 
   commands g =
-    dot 3 "m" (vertexCount g) (edgeCount g)
-    $ ref 9 2 (_Phi_++".memory") "price"
+    dot 3 "m" (edgeCount g)
+    $ ref 2 (_Phi_++".memory") "price"
     $ bind 2 4 "title"
-    $ add (vertexCount g)
+    $ add
     $ bind 2 3 "isbn"
-    $ add (vertexCount g)
+    $ add
     $ bind 0 2 "book2"
-    $ add (vertexCount g)
+    $ add
     $ bind 0 1 "memory"
     $ atom 1 "M1"
-    $ add (vertexCount g)
-    $ add (vertexCount g) g
+    $ add
+    $ add g
+
+  -- commands emptyGraph
