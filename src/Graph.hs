@@ -19,11 +19,10 @@ type EdgeId = Int
 -- | Secondary edge label.
 type SpecialLabel = String
 
-data EdgeColor
-  = Black   -- ^ Attribute edge.
-  | Orange  -- ^ Parent edge.
-  | Blue    -- ^ Copy edge
-  | Green   -- ^ Reference edge?
+data EdgeType
+  = AttributeEdge   -- ^ Attribute edge.
+  | ParentEdge  -- ^ Parent edge.
+  | CopyEdge    -- ^ Copy edge
   deriving (Show)
 
 type EdgeEnds = (VertexId, VertexId)
@@ -32,7 +31,7 @@ data Edge = Edge
   { ends         :: EdgeEnds
   , attribute    :: AttributeName
   , specialLabel :: SpecialLabel
-  , color        :: EdgeColor
+  , edgeType        :: EdgeType
   } deriving (Show)
 
 data Graph = Graph
@@ -73,32 +72,28 @@ executeCommands []           = id
 executeCommands (cmd : cmds) = executeCommands cmds . executeCommand cmd
 
 defaultEdge :: Edge
-defaultEdge =
-  Edge {
-  ends = (-1, -1),
-  attribute = "",
-  specialLabel = "",
-  color = Black
-}
+defaultEdge = Edge
+  { ends = (-1, -1)
+  , attribute = ""
+  , specialLabel = ""
+  , edgeType = AttributeEdge
+  }
 
 emptyGraph :: Graph
-emptyGraph =
-  Graph {
-  vertexData = Map.empty,
-  edgeData = Map.empty,
-  attributeVertex = Map.empty,
-  vertexCount = 0,
-  edgeCount = 0,
-  queried = Set.empty
-}
+emptyGraph = Graph
+  { vertexData = Map.empty
+  , edgeData = Map.empty
+  , attributeVertex = Map.empty
+  , vertexCount = 0
+  , edgeCount = 0
+  , queried = Set.empty
+  }
 
 add :: Graph -> Graph
-add g =
-  g {
-  vertexData = Map.insert (vertexCount g) Nothing (vertexData g)
-  ,
-  vertexCount = (vertexCount g) + 1
-}
+add g = g
+  { vertexData = Map.insert (vertexCount g) Nothing (vertexData g)
+  , vertexCount = (vertexCount g) + 1
+  }
 
 getEdge :: EdgeId -> Graph -> Edge
 getEdge edgeId g = Map.findWithDefault defaultEdge edgeId (edgeData g)
@@ -107,26 +102,20 @@ _rho_ :: String
 _rho_ = "_rho_"
 
 addEdge :: Edge -> Graph -> Graph
-addEdge e g =
-  g {
-  edgeData = Map.insert (edgeCount g) e (edgeData g)
-  ,
-  edgeCount = (edgeCount g) + 1
-  ,
-  attributeVertex = Map.insert (v1, attr) v2 (attributeVertex g)
-}
+addEdge e g = g
+  { edgeData = Map.insert (edgeCount g) e (edgeData g)
+  , edgeCount = (edgeCount g) + 1
+  , attributeVertex = Map.insert (v1, attr) v2 (attributeVertex g)
+  }
   where
     (v1, v2) = ends e
     attr = attribute e
 
 deleteEdge :: EdgeId -> Graph -> Graph
-deleteEdge e g =
-  g {
-  edgeData = Map.delete e (edgeData g)
-  ,
-  attributeVertex =
-    Map.delete (v1, attr) $ attributeVertex g
-}
+deleteEdge e g = g
+  { edgeData = Map.delete e (edgeData g)
+    , attributeVertex = Map.delete (v1, attr) $ attributeVertex g
+  }
   where
     edge = getEdge e g
     (v1, _) = ends edge
@@ -142,17 +131,13 @@ bind :: VertexId -> VertexId -> AttributeName -> Graph -> Graph
 bind v1 v2 attr g
   | attr == _rho_ = addEdge rhoEdge g
   | otherwise     = addEdge blackEdge (addEdge orangeReverseEdge g)
-    where
-      cmdName = getCommand "bind" (v1,v2,attr)
-      rhoEdge = defaultEdge {ends = (v1, v2), attribute = _rho_, color = Orange}
-      blackEdge = rhoEdge {color = Black, attribute = attr}
-      orangeReverseEdge = rhoEdge {ends = (v2, v1)}
+  where
+    rhoEdge = defaultEdge {ends = (v1, v2), attribute = _rho_, edgeType = ParentEdge}
+    blackEdge = rhoEdge {edgeType = AttributeEdge, attribute = attr}
+    orangeReverseEdge = rhoEdge {ends = (v2, v1)}
 
 atom :: VertexId -> VertexData -> Graph -> Graph
-atom v1 m1 g =
-  g {
-  vertexData = Map.insert v1 (Just m1) (vertexData g)
-}
+atom v1 m1 g = g {vertexData = Map.insert v1 (Just m1) (vertexData g)}
 
 _ksi_ = "_ksi_"
 
@@ -164,7 +149,7 @@ tAttribute = "t"
 
 addQueried :: Command -> Graph -> Graph
 addQueried ADD g = g
-addQueried cmd g = g { queried = Set.insert cmd (queried g) }
+addQueried cmd g = g {queried = Set.insert cmd (queried g)}
 
 dot :: EdgeId -> AttributeName -> EdgeId -> Graph -> Graph
 dot e1 m e2 g = g
@@ -174,12 +159,11 @@ dot e1 m e2 g = g
   & addEdge similarEdge
   & deleteEdge e1
   where
-    edge1 = getEdge e1 g
-    (v1, v2) = ends edge1
-    v3 = vertexCount g
+    edge1       = getEdge e1 g
+    (v1, v2)    = ends edge1
+    v3          = vertexCount g
     similarEdge = edge1 {ends = (v1, v3)}
-    tEdge = defaultEdge {ends = (v3, v2), attribute = tAttribute}
-    cmdName = getCommand "dot" (e1, m, v3, e2)
+    tEdge       = defaultEdge {ends = (v3, v2), attribute = tAttribute}
 
 copy :: EdgeId -> VertexId -> EdgeId -> Graph -> Graph
 copy e1 v3 e2 g = g
@@ -187,21 +171,20 @@ copy e1 v3 e2 g = g
   & addEdge edge
   & deleteEdge e1
   where
-    edge1 = getEdge e1 g
-    (v1, v2) = ends edge1
+    edge1       = getEdge e1 g
+    (v1, v2)    = ends edge1
     similarEdge = edge1 {ends = (v1, v3)}
-    edge = defaultEdge {ends = (v3, v2), color = Blue}
-    cmdName = getCommand "copy" (e1, v3, e2, g)
+    edge        = defaultEdge {ends = (v3, v2), edgeType = CopyEdge}
 
 
 type Locator = String
 
 getIdentifiers :: Locator -> [String]
 getIdentifiers l
-  | l == "" = []
+  | l == ""   = []
   | otherwise = fst split : (getIdentifiers $ tail' $ snd split)
   where
-    split = span (\c -> not (c == '.')) l
+    split        = span (\c -> not (c == '.')) l
     tail' (x:xs) = xs
     tail' []     = []
 
@@ -226,7 +209,7 @@ findByIdentifiers v (id:ids) g
         findByIdentifiers 0 ids g
     | id == _rho_ =
         findByIdentifiers (getParentVertex v g) ids g
-    | otherwise =
+    | otherwise   =
         findByIdentifiers (getAttributeVertex v id g) ids g
 
 locate :: VertexId -> Locator -> Graph -> VertexId
@@ -237,14 +220,10 @@ locate v l g = findByIdentifiers v (getIdentifiers l) g
 ref :: VertexId -> Locator -> AttributeName -> Graph -> Graph
 ref v1 l a g = addEdge edge g
   where
-    cmdName = getCommand "ref" (e1, v1, l, a)
-    v2 = locate v1 l g
-    e1 = edgeCount g
+    v2   = locate v1 l g
+    e1   = edgeCount g
     edge = defaultEdge {ends = (v1, v2), attribute = a, specialLabel = l}
 
--- |
--- >>> commands emptyGraph
--- Graph {vertexData = fromList [(0,Nothing),(1,Just "M1"),(2,Nothing),(3,Nothing),(4,Nothing),(5,Just "R(_ksi_.t,m,s)")], edgeData = fromList [(0,Edge {ends = (1,0), attribute = "_rho_", specialLabel = "", color = Orange}),(1,Edge {ends = (0,1), attribute = "memory", specialLabel = "", color = Black}),(2,Edge {ends = (2,0), attribute = "_rho_", specialLabel = "", color = Orange}),(4,Edge {ends = (3,2), attribute = "_rho_", specialLabel = "", color = Orange}),(5,Edge {ends = (2,3), attribute = "isbn", specialLabel = "", color = Black}),(6,Edge {ends = (4,2), attribute = "_rho_", specialLabel = "", color = Orange}),(7,Edge {ends = (2,4), attribute = "title", specialLabel = "", color = Black}),(8,Edge {ends = (2,1), attribute = "price", specialLabel = "_Phi_.memory", color = Black}),(9,Edge {ends = (5,2), attribute = "t", specialLabel = "", color = Black}),(10,Edge {ends = (0,5), attribute = "book2", specialLabel = "", color = Black})], attributeVertex = fromList [((0,"memory"),1),((1,"_rho_"),0),((2,"_rho_"),0),((2,"isbn"),3),((2,"price"),1),((2,"title"),4),((3,"_rho_"),2),((4,"_rho_"),2),((5,"t"),2)], vertexCount = 6, edgeCount = 11, queried = fromList [BIND 0 1 "memory",BIND 0 2 "book2",BIND 2 3 "isbn",BIND 2 4 "title",DOT 3 "m" 0,ATOM 1 "M1",REF 2 "_Phi_.memory" "price"]}
 executeSampleCommands :: Graph -> Graph
 executeSampleCommands g = g & executeCommands
   [ ADD -- vertex 0
