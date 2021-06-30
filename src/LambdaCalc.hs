@@ -1,4 +1,5 @@
-module ULC where
+
+module LambdaCalc where
 
 type Ident = String
 
