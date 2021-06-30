@@ -20,9 +20,9 @@ type EdgeId = Int
 type SpecialLabel = String
 
 data EdgeType
-  = AttributeEdge   -- ^ Attribute edge.
-  | ParentEdge  -- ^ Parent edge.
-  | CopyEdge    -- ^ Copy edge
+  = AttributeEdge
+  | ParentEdge
+  | CopyEdge
   deriving (Show)
 
 type EdgeEnds = (VertexId, VertexId)
@@ -51,7 +51,7 @@ data Command
   | DOT EdgeId AttributeName EdgeId
   | COPY EdgeId VertexId EdgeId
   | ATOM VertexId VertexData
-  | REF VertexId Locator AttributeName
+  | REF VertexId LocatorString AttributeName
   deriving (Eq, Ord, Show)
 
 executeCommand :: Command -> (Graph -> Graph)
@@ -98,7 +98,7 @@ add g = g
 getEdge :: EdgeId -> Graph -> Edge
 getEdge edgeId g = Map.findWithDefault defaultEdge edgeId (edgeData g)
 
-_rho_ :: String
+_rho_ :: AttributeName
 _rho_ = "_rho_"
 
 addEdge :: Edge -> Graph -> Graph
@@ -139,10 +139,11 @@ bind v1 v2 attr g
 atom :: VertexId -> VertexData -> Graph -> Graph
 atom v1 m1 g = g {vertexData = Map.insert v1 (Just m1) (vertexData g)}
 
-_ksi_ = "_ksi_"
+_xi_ :: AttributeName
+_xi_ = "_xi_"
 
 specialLambda :: String -> String
-specialLambda m = "R(" ++ _ksi_ ++ ".t," ++ m ++ ",s)"
+specialLambda m = "R(" ++ _xi_ ++ ".t," ++ m ++ ",s)"
 
 tAttribute :: String
 tAttribute = "t"
@@ -177,17 +178,20 @@ copy e1 v3 e2 g = g
     edge        = defaultEdge {ends = (v3, v2), edgeType = CopyEdge}
 
 
-type Locator = String
+type LocatorString = String
 
-getIdentifiers :: Locator -> [String]
+getIdentifiers :: LocatorString -> [String]
 getIdentifiers l
   | l == ""   = []
-  | otherwise = fst split : (getIdentifiers $ tail' $ snd split)
+  | otherwise = fst split : (getIdentifiers (tail' (snd split)))
   where
-    split        = span (\c -> not (c == '.')) l
-    tail' (x:xs) = xs
-    tail' []     = []
+    split = span (\c -> not (c == '.')) l
 
+tail' :: [a] -> [a]
+tail' (x:xs) = xs
+tail' []     = []
+
+_Phi_ :: AttributeName
 _Phi_ = "_Phi_"
 
 type Identifiers = [String]
@@ -212,12 +216,10 @@ findByIdentifiers v (id:ids) g
     | otherwise   =
         findByIdentifiers (getAttributeVertex v id g) ids g
 
-locate :: VertexId -> Locator -> Graph -> VertexId
+locate :: VertexId -> LocatorString -> Graph -> VertexId
 locate v l g = findByIdentifiers v (getIdentifiers l) g
 
-
--- TODO color = Green?
-ref :: VertexId -> Locator -> AttributeName -> Graph -> Graph
+ref :: VertexId -> LocatorString -> AttributeName -> Graph -> Graph
 ref v1 l a g = addEdge edge g
   where
     v2   = locate v1 l g
@@ -241,3 +243,36 @@ executeSampleCommands g = g & executeCommands
   ]
 
 -- commands emptyGraph
+
+_phi_ :: AttributeName
+_phi_ = "_phi_"
+
+data Locator
+  = Empty
+  | UpperPhi
+  | LowerPhi
+  | Rho
+  | Xi
+  | Attr AttributeName
+  | Locator `Dot` Locator
+  deriving (Show, Eq, Ord)
+
+-- translate locator identifier to string
+-- locatorIdToString :: Locator -> LocatorString
+-- locatorIdToString l =
+
+
+locatorToString :: Locator -> LocatorString
+locatorToString l =
+  case l of
+    x `Dot` xs -> (locatorToString x) ++ "." ++ (locatorToString xs)
+    otherwise -> locatorIdToString
+  where
+    locatorIdToString =
+      case l of
+        UpperPhi  -> _Phi_
+        LowerPhi  -> _phi_
+        Rho       -> _rho_
+        Xi        -> _xi_
+        Attr m    -> m
+        otherwise -> "_|_"
