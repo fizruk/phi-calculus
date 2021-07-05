@@ -302,10 +302,3 @@ discover l a s g
     hasLowerPhiAttribute = getAttributeVertex w LowerPhi g /= defaultVertexId
     hasCopyAttribute = getAttributeVertex w Copy g /= defaultVertexId
     hasLambda = m /= ""
-
-
-g :: (Eq a, Num a, Show a) => a -> String
-g a = 
-  case a of
-    3 -> show a
-    _ -> show 4 
