@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-} --delete this later!!
 
 module Graph where
 
@@ -7,7 +8,7 @@ module Graph where
 import Data.Function ((&))
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
-import Phi ()
+import Phi
 
 type VertexId = Int
 
@@ -41,7 +42,7 @@ data Edge = Edge
     color :: EdgeColor
   }
   deriving (Show)
-
+  
 data Graph = Graph
   { vertexData :: Map.Map VertexId (Maybe VertexData),
     edgeData :: Map.Map EdgeId Edge,
@@ -53,6 +54,8 @@ data Graph = Graph
     queried :: Set.Set Command
   }
   deriving (Show)
+
+
 
 data Command
   = ADD
@@ -266,6 +269,23 @@ executeSampleCommands g =
         BIND 2 4 "title",
         REF 2 (_Phi_ ++ ".memory") "price",
         DOT 3 "m" (edgeCount g)
+      ]
+
+_delta_ :: AttributeName
+_delta_ = "_delta_"
+
+sample :: Graph -> Graph
+sample g = 
+  g
+    & executeCommands
+      [  ADD,
+         ADD,
+         BIND 0 1 "book",
+         ADD,
+         ADD,
+         BIND 1 2 "isbn",
+         BIND 1 3 "title",
+         BIND 3 4 _delta_
       ]
 
 printGraph g = do

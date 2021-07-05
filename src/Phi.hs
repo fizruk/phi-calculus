@@ -26,21 +26,7 @@ data Term d
   | Data d
   deriving (Eq, Show)
 
-exampleTerm :: Term String
-exampleTerm =
-  Object
-    [ ( AttrIdent "book",
-        Just
-          ( Object
-              [ (AttrIdent "isbn", Nothing),
-                (AttrIdent "title", Just 
-                ( Object 
-                    [(AttrDelta, Just (Data "Sample title"))]))
-              ]
-          )
-      )
-    ]
-    
+
 data DataGraph
 
 discover :: Term d -> Attr -> [Term d] -> Term d

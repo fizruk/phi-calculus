@@ -59,3 +59,6 @@ attributeVertex:
 vertex count=6, edge count=10
 operations queue:
 [BIND 0 1 "memory",BIND 0 2 "book2",BIND 2 3 "isbn",BIND 2 4 "title",DOT 3 "m" 0,ATOM 1 "M1",REF 2 "_Phi_.memory" "price"]
+
+
+[[Ph, [Book, isbn, delta], ..]]

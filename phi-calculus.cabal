@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: a1620a375474191b58dd59457ced984cc0aebb6c3ae68546fb075379df38d40a
+-- hash: 809f345ebf0a597c7f9afef69608d4aded104f66ef57441a2f213d86a2ca8b13
 
 name:           phi-calculus
 version:        0.1.0.0
@@ -31,6 +31,7 @@ library
       LambdaCalc
       Lib
       Phi
+      Translator
   other-modules:
       Paths_phi_calculus
   hs-source-dirs:
