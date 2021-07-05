@@ -1,4 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+
 module Phi where
 
 type Ident = String
@@ -13,14 +15,17 @@ data Attr
 data Term d
   = Var Ident
   | App (Term d) (Term d)
-  | Object [(Attr, Maybe (Term d))]    -- ^
-  | Dot (Term d) Attr                  -- ^ example.ident
+  | -- |
+    Object [(Attr, Maybe (Term d))]
+  | -- | example.ident
+    Dot (Term d) Attr
   | Rho
   | BigPhi
   | SmallPhi
   | Xi
   | Data d
   deriving (Eq, Show)
+
 
 data DataGraph
 
@@ -32,30 +37,30 @@ discover l a s =
     Xi ->
       case s of
         self : _ -> self
-        _        -> error "using 𝜉 outside of objects"
+        _ -> error "using 𝜉 outside of objects"
     Rho ->
       case s of
         _self : parent : _ -> parent
-        _                  -> error "using 𝜌 without parent"
+        _ -> error "using 𝜌 without parent"
     Object attrs ->
       case lookup a attrs of
         Just (Just v') -> v'
-        Just Nothing   -> error ("referencing free attribute: " ++ show a)
-        Nothing        ->
+        Just Nothing -> error ("referencing free attribute: " ++ show a)
+        Nothing ->
           case lookup AttrPhi attrs of
             Just (Just v') -> discover v' a (v' : s)
-            _              -> error "_|_"
+            _ -> error "_|_"
 
 dataize :: Show d => Term d -> d
 dataize term =
   case discover term AttrDelta [] of
     Data x -> x
-    o      -> error ("Cannot dataize object: " ++ show o)
+    o -> error ("Cannot dataize object: " ++ show o)
 
 mkData :: d -> Term d
 mkData x = Object [(AttrDelta, Just (Data x))]
 
 point :: Term Double
-point = Object
-  [
-  ]
+point =
+  Object
+    []

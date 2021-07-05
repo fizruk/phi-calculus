@@ -1,0 +1,64 @@
+----------------------------------------------------
+vehicle -> [
+    speed -> something
+    fuel consumption -> something
+    spended time -> something
+    setSpeed(s) -> [
+        phi -> rho.speed.write(s)
+    ]
+
+    car -> [
+        number of whiels -> something
+        get rided distance ->[
+            phi -> pho.pho.speed * rho.rho.(spended time)
+        ]
+    ]
+
+    plane -> [
+        altitude -> something
+        get altitude -> [
+            phi -> pho.altitude
+        ]
+    ]
+]
+-------------------------------------------------------
+
+
+-------------------------------------------------------
+vertex(data) -> [
+    ...
+]
+
+edge(data) -> [
+    ...
+]
+
+graph -> [
+    verteces -> PHI.vertex(some data)
+    edges -> PHI.edge(data)
+    ...
+]
+---------------------------------------------------------
+
+Data Graph:
+Vertex Data map: 
+fromList [(0,Nothing),(1,Just "M1"),(2,Nothing),(3,Nothing),(4,Nothing),(5,Just "R(_ksi_.t,m,s)")]
+Edge data:
+    (0,Edge {ends = (1,0), attribute = "_rho_", specialLabel = "", color = Orange})
+    (1,Edge {ends = (0,1), attribute = "memory", specialLabel = "", color = Black})
+    (2,Edge {ends = (2,0), attribute = "_rho_", specialLabel = "", color = Orange})
+    (4,Edge {ends = (3,2), attribute = "_rho_", specialLabel = "", color = Orange})
+    (5,Edge {ends = (2,3), attribute = "isbn", specialLabel = "", color = Black})
+    (6,Edge {ends = (4,2), attribute = "_rho_", specialLabel = "", color = Orange})
+    (7,Edge {ends = (2,4), attribute = "title", specialLabel = "", color = Black})
+    (8,Edge {ends = (2,1), attribute = "price", specialLabel = "_Phi_.memory", color = Black})
+    (9,Edge {ends = (5,2), attribute = "t", specialLabel = "", color = Black})
+    (10,Edge {ends = (0,5), attribute = "book2", specialLabel = "", color = Black})
+attributeVertex: 
+[((0,"memory"),1),((1,"_rho_"),0),((2,"_rho_"),0),((2,"isbn"),3),((2,"price"),1),((2,"title"),4),((3,"_rho_"),2),((4,"_rho_"),2),((5,"t"),2)]
+vertex count=6, edge count=10
+operations queue:
+[BIND 0 1 "memory",BIND 0 2 "book2",BIND 2 3 "isbn",BIND 2 4 "title",DOT 3 "m" 0,ATOM 1 "M1",REF 2 "_Phi_.memory" "price"]
+
+
+[[Ph, [Book, isbn, delta], ..]]
