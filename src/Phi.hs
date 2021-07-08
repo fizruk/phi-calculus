@@ -341,6 +341,24 @@ ex2 = Object (HashMap.fromList [(AttrIdent "x", Object (HashMap.fromList [(AttrI
 ex3 :: Term ()
 ex3 = Object (HashMap.fromList [(AttrPhi, Object (HashMap.fromList [(AttrIdent "x", Object HashMap.empty), (AttrIdent "y", Var (AttrIdent "x"))]))])
 
+-- |
+-- >>> ex5
+-- ⟦ x_less_y ↦ x.less(_1 ↦ y)
+-- , x ↦ ⟦ mul ↦ ⟦ _1 ↦ ∅, 𝜑 ↦ <ATOM num_mul> ⟧
+--       , sub ↦ ⟦ _1 ↦ ∅, 𝜑 ↦ <ATOM num_sub> ⟧
+--       , less ↦ ⟦ _1 ↦ ∅, 𝜑 ↦ <ATOM num_less> ⟧
+--       , δ ↦ 2
+--       , inc ↦ ⟦ 𝜑 ↦ <ATOM num_inc> ⟧
+--       , add ↦ ⟦ _1 ↦ ∅, 𝜑 ↦ <ATOM num_add> ⟧ ⟧
+-- , distance_from_x_to_y ↦ (x.less(_1 ↦ y)).if(_1 ↦ y.sub(_1 ↦ x))(_2 ↦ x
+--                                                                    .sub(_1 ↦ y))
+-- , y ↦ ⟦ mul ↦ ⟦ _1 ↦ ∅, 𝜑 ↦ <ATOM num_mul> ⟧
+--       , sub ↦ ⟦ _1 ↦ ∅, 𝜑 ↦ <ATOM num_sub> ⟧
+--       , less ↦ ⟦ _1 ↦ ∅, 𝜑 ↦ <ATOM num_less> ⟧
+--       , δ ↦ 3
+--       , inc ↦ ⟦ 𝜑 ↦ <ATOM num_inc> ⟧
+--       , add ↦ ⟦ _1 ↦ ∅, 𝜑 ↦ <ATOM num_add> ⟧ ⟧
+-- , x_less_y_if ↦ (x.less(_1 ↦ y)).if(_1 ↦ x) ⟧
 ex5 :: Term Int
 ex5 = Object $ HashMap.fromList
   [ ("x", mkInt 2)
@@ -354,6 +372,21 @@ ex5 = Object $ HashMap.fromList
           ("_2", App (Dot (Var "x") "sub") ("_1", Var "y")))
   ]
 
+-- |
+-- >>> ex5'
+-- ⟦ x ↦ ⟦ mul ↦ ⟦ _1 ↦ ∅, 𝜑 ↦ <ATOM num_mul> ⟧
+--       , sub ↦ ⟦ _1 ↦ ∅, 𝜑 ↦ <ATOM num_sub> ⟧
+--       , less ↦ ⟦ _1 ↦ ∅, 𝜑 ↦ <ATOM num_less> ⟧
+--       , δ ↦ 2
+--       , inc ↦ ⟦ 𝜑 ↦ <ATOM num_inc> ⟧
+--       , add ↦ ⟦ _1 ↦ ∅, 𝜑 ↦ <ATOM num_add> ⟧ ⟧
+-- , y ↦ ⟦ mul ↦ ⟦ _1 ↦ ∅, 𝜑 ↦ <ATOM num_mul> ⟧
+--       , sub ↦ ⟦ _1 ↦ ∅, 𝜑 ↦ <ATOM num_sub> ⟧
+--       , less ↦ ⟦ _1 ↦ ∅, 𝜑 ↦ <ATOM num_less> ⟧
+--       , δ ↦ 3
+--       , inc ↦ ⟦ 𝜑 ↦ <ATOM num_inc> ⟧
+--       , add ↦ ⟦ _1 ↦ ∅, 𝜑 ↦ <ATOM num_add> ⟧ ⟧
+-- , x_less_y_if ↦ (x.less(_1 ↦ y)).if(_1 ↦ x) ⟧
 ex5' :: Term Int
 ex5' = Object $ HashMap.fromList
   [ ("x", mkInt 2)
