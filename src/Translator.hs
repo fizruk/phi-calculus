@@ -77,7 +77,13 @@ phiGraph = add emptyGraph --initial graph with main(big Phi) vertex
 translation :: Term String -> Graph -> Graph
 translation term g =
   case term of
-    Object [(_, Nothing)] -> 
+    Object(subterm : subterms) | not (null subterms) ->
+      translation (Object[subterm]) (translation (Object subterms) g)
+    Object[(_, Just a)] ->
       bind (vertexCount newG) (vertexCount newG - 1) (attrToStr $ getAttr term) newG
-      where newG = add g
-    _ -> emptyGraph
+      where newG = add (translation (getSubTerm term) g)
+    Object [(_, Nothing)] ->
+      bind (vertexCount newG) (vertexCount newG - 1) (attrToStr $ getAttr term) newG
+      where
+        newG = add g
+    _ -> g

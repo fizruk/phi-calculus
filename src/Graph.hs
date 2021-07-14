@@ -5,12 +5,13 @@ module Graph where
 
 -- TODO implement graph with search adjacent by vertex index and attr name
 
-import Data.Function ((&))
+import           Data.Function   ((&))
 import qualified Data.Map.Strict as Map
-import qualified Data.Set as Set
-import Phi
+import qualified Data.Set        as Set
+import           Phi
 
 type VertexId = Int
+
 
 type AttributeName = String
 
@@ -36,22 +37,22 @@ data EdgeColor
 type EdgeEnds = (VertexId, VertexId)
 
 data Edge = Edge
-  { ends :: EdgeEnds,
-    attribute :: AttributeName,
+  { ends         :: EdgeEnds,
+    attribute    :: AttributeName,
     specialLabel :: SpecialLabel,
-    color :: EdgeColor
+    color        :: EdgeColor
   }
   deriving (Show)
-  
+
 data Graph = Graph
-  { vertexData :: Map.Map VertexId (Maybe VertexData),
-    edgeData :: Map.Map EdgeId Edge,
+  { vertexData      :: Map.Map VertexId (Maybe VertexData),
+    edgeData        :: Map.Map EdgeId Edge,
     attributeVertex :: Map.Map (VertexId, AttributeName) VertexId,
-    vertexCount :: Int,
-    edgeCount :: Int,
+    vertexCount     :: Int,
+    edgeCount       :: Int,
     -- | Record already executed GMIs to preserve idempotent property.
     -- FIXME: check that this is correct.
-    queried :: Set.Set Command
+    queried         :: Set.Set Command
   }
   deriving (Show)
 
@@ -72,15 +73,15 @@ executeCommand cmd graph
   | otherwise = addQueried cmd (modifier graph)
   where
     modifier = case cmd of
-      ADD -> add
+      ADD          -> add
       BIND v1 v2 a -> bind v1 v2 a
-      DOT e1 a e2 -> dot e1 a e2
+      DOT e1 a e2  -> dot e1 a e2
       COPY e1 v e2 -> copy e1 v e2
-      ATOM v m -> atom v m
-      REF v l a -> ref v l a
+      ATOM v m     -> atom v m
+      REF v l a    -> ref v l a
 
 executeCommands :: [Command] -> Graph -> Graph
-executeCommands [] = id
+executeCommands []           = id
 executeCommands (cmd : cmds) = executeCommands cmds . executeCommand cmd
 
 defaultEdge :: Edge
@@ -213,7 +214,7 @@ getIdentifiers l
   where
     split = span (/= '.') l
     tail' (x : xs) = xs
-    tail' [] = []
+    tail' []       = []
 
 _Phi_ :: String
 _Phi_ = "_Phi_"
@@ -275,7 +276,7 @@ _delta_ :: AttributeName
 _delta_ = "_delta_"
 
 sample :: Graph -> Graph
-sample g = 
+sample g =
   g
     & executeCommands
       [  ADD,

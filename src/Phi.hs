@@ -37,11 +37,11 @@ discover l a s =
     Xi ->
       case s of
         self : _ -> self
-        _ -> error "using 𝜉 outside of objects"
+        _        -> error "using 𝜉 outside of objects"
     Rho ->
       case s of
         _self : parent : _ -> parent
-        _ -> error "using 𝜌 without parent"
+        _                  -> error "using 𝜌 without parent"
     Object attrs ->
       case lookup a attrs of
         Just (Just v') -> v'
@@ -49,13 +49,13 @@ discover l a s =
         Nothing ->
           case lookup AttrPhi attrs of
             Just (Just v') -> discover v' a (v' : s)
-            _ -> error "_|_"
+            _              -> error "_|_"
 
-dataize :: Show d => Term d -> d
+dataize :: Show d => Term d -> d 
 dataize term =
   case discover term AttrDelta [] of
     Data x -> x
-    o -> error ("Cannot dataize object: " ++ show o)
+    o      -> error ("Cannot dataize object: " ++ show o)
 
 mkData :: d -> Term d
 mkData x = Object [(AttrDelta, Just (Data x))]
