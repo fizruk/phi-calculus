@@ -8,6 +8,7 @@ module Phi where
 import           Data.Hashable             (Hashable)
 import           Data.HashMap.Strict       (HashMap)
 import qualified Data.HashMap.Strict       as HashMap
+import qualified Data.List                 as List
 import           Data.String               (IsString (..))
 import           GHC.Generics              (Generic)
 
@@ -22,9 +23,7 @@ data Attr
   = AttrIdent Ident   -- ^ Normal attribute: \(t.a\).
   | AttrPhi           -- ^ Decorator attribute: \(t.\varphi\).
   | AttrDelta         -- ^ Data attribute: \(t.\delta\).
-  | AttrRho           -- ^ Parent attribute: \(t.\rho\).
-  | AttrXi            -- ^ Current object attribute: \(t.\xi\).
-  deriving (Eq, Generic, Hashable)
+  deriving (Eq, Ord, Generic, Hashable)
 
 instance Show Attr where show = show . pretty
 
@@ -34,13 +33,30 @@ instance Pretty Attr where pretty = ppAttr
 instance IsString Attr where
   fromString = AttrIdent . fromString
 
+data Locator
+  = AttrLocator Attr
+  | Rho
+  | Xi
+  deriving (Eq, Generic, Hashable)
+
+instance Show Locator where show = show . pretty
+
+instance Pretty Locator where pretty = ppLocator
+
+-- FIXME: parse non-normal attributes
+instance IsString Locator where
+  fromString = AttrLocator . fromString
+
 -- | An object term is just a collection of attribute-term pairs
 -- where attributes are unique.
 type Object d = HashMap Attr (Term d)
 
+-- | A substitution can map attributes and locators.
+type Substitution d = HashMap Locator (Term d)
+
 -- | A term of \(\varphi\)-calculus.
 data Term d
-  = Var Attr
+  = Var Locator
   -- ^ Variable is a locator for some attribute: \(x\).
   | App (Term d) (Ident, Term d)
   -- ^ Application: \(t(a \mapsto s)\).
@@ -60,7 +76,7 @@ data Term d
 -- The most important part here is that \(\xi\) attributes convert to \(\rho\),
 -- \(\rho\) disappears and a new \(\xi\) attribute is added
 -- when going recursively into an object.
-substitute :: Object d -> Term d -> Term d
+substitute :: Substitution d -> Term d -> Term d
 substitute substs = \case
   Var x ->
     case HashMap.lookup x substs of
@@ -71,11 +87,11 @@ substitute substs = \case
   App t (a, s) ->
     App (substitute substs t) (a, substitute substs s)
   Object o ->
-    let shadowed = AttrRho : HashMap.keys o
+    let shadowed = Rho : (AttrLocator <$> HashMap.keys o)
         xiToRho =
-          case HashMap.lookup AttrXi substs of
-            Just parent -> HashMap.insert AttrRho parent . HashMap.delete AttrXi
-            Nothing -> id
+          case HashMap.lookup Xi substs of
+            Just parent -> HashMap.insert Rho parent . HashMap.delete Xi
+            Nothing     -> id
         update = xiToRho . HashMap.filterWithKey (\k _ -> k `notElem` shadowed)
      in Object (HashMap.map (substitute (update substs)) o)
   t@FreeAttr{} -> t
@@ -85,6 +101,10 @@ substitute substs = \case
 -- | Reduce a term to WHNF (weak head normal form).
 whnf :: Term d -> Term d
 whnf = whnfWith []
+
+objectToSubstitution :: Object d -> Substitution d
+objectToSubstitution t = HashMap.fromList $ [(Xi, Object t)] <>
+  [ (AttrLocator a, Dot (Object t) a) | a <- HashMap.keys t ]
 
 -- | Reduce a term to WHNF (weak head normal form) given current stack of ancestor objects.
 whnfWith :: [Object d] -> Term d -> Term d
@@ -102,12 +122,12 @@ whnfWith parents = \case
 
   Dot u a ->
     case whnfWith parents u of
-      u'@(Object o) ->
+      Object o ->
         case a `inObject` o of
-          Just v -> whnfWith (o:parents) (substitute (o `with` [(AttrXi, u')]) (addParentToAtoms o v))
+          Just v -> whnfWith (o:parents) (substitute (objectToSubstitution o) (addParentToAtoms o v))
           Nothing ->
             case AttrPhi `inObject` o of
-              Just v -> whnfWith (o:parents) (Dot (substitute (o `with` [(AttrXi, u')]) (addParentToAtoms o v)) a)
+              Just v -> whnfWith (o:parents) (Dot (substitute (objectToSubstitution o) (addParentToAtoms o v)) a)
               Nothing -> error ("attribute " <> show a <> " not found in an object")
       u' -> Dot u' a
 
@@ -159,20 +179,36 @@ dataizeWith' parents t =
 
 ppTerm :: Pretty d => Term d -> Doc ann
 ppTerm = \case
-  Var a -> ppAttr a
-  App t (a, s) -> ppTerm t <> Doc.parens (Doc.hang 2 $ Doc.pretty a <+> "↦" <+> ppTerm s)
-  Dot t a -> ppLocator t <> Doc.softline' <> "." <> ppAttr a
-  Object o -> Doc.align $ Doc.encloseSep "⟦ " " ⟧" (Doc.comma <+> "")
-    (ppAttrWithValue <$> HashMap.toList o)
+  Var a -> ppLocator a
+  App t (a, s) -> ppTerm t <> Doc.parens (Doc.nest 2 $ Doc.pretty a <+> "↦" <+> ppTerm s)
+  Dot t a -> ppAsLocator t <> "." <> ppAttr a
+  Object o ->
+    case HashMap.lookup AttrDelta o of
+      Just (Data d) -> pretty d
+      _ | null o    -> "⟦⟧"
+        | otherwise -> ppObject o
   FreeAttr -> "∅"
   Data d -> pretty d
   Atom name _lvl _outers _atom -> "<ATOM " <> pretty name <> ">"
 
-ppAttrWithValue :: Pretty d => (Attr, Term d) -> Doc ann
-ppAttrWithValue (a, t) = ppAttr a <+> "↦" <+> Doc.align (ppTerm t)
+ppObject :: Pretty d => Object d -> Doc ann
+ppObject
+  = Doc.group
+  . Doc.nest 2
+  . Doc.enclose
+      (Doc.flatAlt ("⟦" <> Doc.line) "⟦ ")
+      (Doc.flatAlt (Doc.nest (-2) $ Doc.line <> "⟧") " ⟧")
+  . Doc.vcat
+  . Doc.punctuate (Doc.comma <> Doc.space)
+  . map ppAttrWithValue
+  . List.sortOn fst
+  . HashMap.toList
 
-ppLocator :: Pretty d => Term d -> Doc ann
-ppLocator = \case
+ppAttrWithValue :: Pretty d => (Attr, Term d) -> Doc ann
+ppAttrWithValue (a, t) = ppAttr a <+> "↦" <+> ppTerm t
+
+ppAsLocator :: Pretty d => Term d -> Doc ann
+ppAsLocator = \case
   t@App{} -> Doc.parens (ppTerm t)
   t       -> ppTerm t
 
@@ -181,8 +217,12 @@ ppAttr = \case
   AttrIdent x -> Doc.pretty x
   AttrPhi     -> "𝜑"
   AttrDelta   -> "δ"
-  AttrRho     -> "ρ"
-  AttrXi      -> "ξ"
+
+ppLocator :: Locator -> Doc ann
+ppLocator = \case
+  AttrLocator a -> ppAttr a
+  Rho     -> "ρ"
+  Xi      -> "ξ"
 
 instance Pretty d => Show (Term d) where show = show . pretty
 instance Pretty d => Pretty (Term d) where pretty = ppTerm
@@ -320,13 +360,13 @@ mkBool b = Object $ HashMap.fromList
 -- >>> ex1
 -- ⟦x ↦ ∅,y ↦ x⟧
 ex1 :: Term ()
-ex1 = Object (HashMap.fromList [(AttrIdent "x", FreeAttr), (AttrIdent "y", Var (AttrIdent "x"))])
+ex1 = Object (HashMap.fromList [(AttrIdent "x", FreeAttr), (AttrIdent "y", Var (AttrLocator (AttrIdent "x")))])
 
 -- |
 -- >>> ex2
 -- ⟦x ↦ ⟦y ↦ ρ⟧⟧
 ex2 :: Term ()
-ex2 = Object (HashMap.fromList [(AttrIdent "x", Object (HashMap.fromList [(AttrIdent "y", Var AttrRho)]))])
+ex2 = Object (HashMap.fromList [(AttrIdent "x", Object (HashMap.fromList [(AttrIdent "y", Var Rho)]))])
 
 -- |
 -- >>> ex3
@@ -339,7 +379,7 @@ ex2 = Object (HashMap.fromList [(AttrIdent "x", Object (HashMap.fromList [(AttrI
 -- >>> whnf $ Dot ex3 AttrPhi
 -- ⟦x ↦ ⟦⟧,y ↦ x⟧
 ex3 :: Term ()
-ex3 = Object (HashMap.fromList [(AttrPhi, Object (HashMap.fromList [(AttrIdent "x", Object HashMap.empty), (AttrIdent "y", Var (AttrIdent "x"))]))])
+ex3 = Object (HashMap.fromList [(AttrPhi, Object (HashMap.fromList [(AttrIdent "x", Object HashMap.empty), (AttrIdent "y", Var (AttrLocator (AttrIdent "x")))]))])
 
 -- |
 -- >>> ex5
@@ -479,9 +519,13 @@ ex_point = Object $ HashMap.fromList
       ])
   ]
 
+-- |
+-- >>> dataize ex_with_point
+-- Right 5.0
 ex_with_point :: Term Double
-ex_with_point = App (Dot point_0_0 "distance_to") ("p", point_3_4)
-  where
-    point_0_0 = App (App ex_point ("x", mkDouble 0)) ("y", mkDouble 0)
-    point_3_4 = App (App ex_point ("x", mkDouble 3)) ("y", mkDouble 4)
-
+ex_with_point = Object $ HashMap.fromList
+  [ ("point", ex_point)
+  , ("point_0_0", App (App (Var "point") ("x", mkDouble 0)) ("y", mkDouble 0))
+  , ("point_3_4", App (App (Var "point") ("x", mkDouble 3)) ("y", mkDouble 4))
+  , (AttrPhi, App (Dot (Var "point_0_0") "distance_to") ("p", Var "point_3_4"))
+  ]
