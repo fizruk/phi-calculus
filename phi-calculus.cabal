@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 1d274c7715af20018c048bc2b17bc4f23ab0274718c961f7c7f594f698480d5d
+-- hash: ecc2156119430100228775fd72ef39c7906b66be4e989587a98522b04671ea42
 
 name:           phi-calculus
 version:        0.1.0.0
@@ -29,6 +29,8 @@ library
   exposed-modules:
       Graph
       Phi
+      PhiTerms
+      SampleTerms
       ULC
   other-modules:
       Paths_phi_calculus

@@ -51,6 +51,7 @@ data EdgeType
 
 type EdgeEnds = (VertexId, VertexId)
 
+
 data Edge = Edge
   { ends :: EdgeEnds,
     attribute :: Attribute,
@@ -59,6 +60,7 @@ data Edge = Edge
   }
   deriving (Show)
 
+-- | edge used by default
 defaultEdge :: Edge
 defaultEdge =
   Edge
@@ -68,6 +70,13 @@ defaultEdge =
       edgeType = ParentEdge
     }
 
+
+{-- | 
+data structure describing a graph that can be modified by GMIs
+can return 
+  e_i by i
+  v_i by v_j and attribute to v_i
+--}
 data Graph = Graph
   { vertexData :: Map.Map VertexId VertexData,
     edgeData :: Map.Map EdgeId Edge,
@@ -80,6 +89,8 @@ data Graph = Graph
   }
   deriving (Show)
 
+
+-- | GMIs
 data Command
   = ADD
   | BIND VertexId VertexId Attribute
@@ -89,6 +100,8 @@ data Command
   | REF VertexId Locator Attribute
   deriving (Eq, Ord, Show)
 
+
+-- | execute command once to presume idempotency property
 executeCommand :: Command -> (Graph -> Graph)
 executeCommand cmd graph
   | isQueried cmd graph = graph
@@ -102,10 +115,13 @@ executeCommand cmd graph
       ATOM v m -> atom v m
       REF v l a -> ref v l a
 
+-- | execute a sequence of GMIs
 executeCommands :: [Command] -> Graph -> Graph
 executeCommands [] = id
 executeCommands (cmd : cmds) = executeCommands cmds . executeCommand cmd
 
+
+-- | initial graph without vertices
 emptyGraph :: Graph
 emptyGraph =
   Graph
@@ -117,15 +133,18 @@ emptyGraph =
       queried = Set.empty
     }
 
+-- | add a vertex with the next unused number to the graph 
 add :: Graph -> Graph
 add g =
   g
     { vertexCount = vertexCount g + 1
     }
 
+-- | return an edge by edge number or the default edge
 getEdge :: EdgeId -> Graph -> Edge
 getEdge edgeId g = Map.findWithDefault defaultEdge edgeId (edgeData g)
 
+-- | add a new edge to graph
 addEdge :: Edge -> Graph -> Graph
 addEdge e g =
   g
@@ -137,6 +156,7 @@ addEdge e g =
     (v1, v2) = ends e
     attr = attribute e
 
+-- | remove edge from graph
 deleteEdge :: EdgeId -> Graph -> Graph
 deleteEdge e g =
   g
@@ -148,9 +168,7 @@ deleteEdge e g =
     (v1, _) = ends edge
     attr = attribute edge
 
-getCommand :: Show a => String -> a -> String
-getCommand cmdName attrs = cmdName ++ show attrs
-
+-- | True if command was queried. Need for keeping idempotency of operations
 isQueried :: Command -> Graph -> Bool
 isQueried cmd g = cmd `Set.member` queried g
 
@@ -169,6 +187,7 @@ atom v1 m1 g = g {vertexData = Map.insert v1 m1 (vertexData g)}
 specialLambda :: Attribute -> String
 specialLambda m = "discover(" ++ show Xi ++ "." ++ show T ++ ", " ++ show m ++ ", s)"
 
+-- | save info about queried command
 addQueried :: Command -> Graph -> Graph
 addQueried ADD g = g
 addQueried cmd g = g {queried = Set.insert cmd (queried g)}
@@ -200,24 +219,28 @@ copy e1 v3 e2 g =
     similarEdge = edge1 {ends = (v1, v3)}
     edge = defaultEdge {ends = (v3, v2), attribute = Copy, edgeType = CopyEdge}
 
-type LocatorString = String
+-- | describes locators
+-- type LocatorString = String
 
-tail' :: [a] -> [a]
-tail' (x : xs) = xs
-tail' [] = []
+-- tail' :: [a] -> [a]
+-- tail' (x : xs) = xs
+-- tail' [] = []
 
-type Identifiers = [String]
+-- type Identifiers = [String]
 
 defaultVertexId :: VertexId
 defaultVertexId = -1
 
+-- | get adjacent vertex by attribute
 getAttributeVertex :: VertexId -> Attribute -> Graph -> VertexId
 getAttributeVertex v attr g =
   Map.findWithDefault defaultVertexId (v, attr) (attributeVertex g)
 
+-- | get a vertex to which there is a parent (rho) edge from the current
 getParentVertex :: VertexId -> Graph -> VertexId
 getParentVertex v = getAttributeVertex v Rho
 
+-- find a vertex by locator
 findByLocator :: VertexId -> Locator -> Graph -> VertexId
 findByLocator v [] g = v
 findByLocator v (id : ids) g
@@ -227,7 +250,7 @@ findByLocator v (id : ids) g
     findByLocator (getParentVertex v g) ids g
   | otherwise =
     findByLocator (getAttributeVertex v id g) ids g
-
+ 
 ref :: VertexId -> Locator -> Attribute -> Graph -> Graph
 ref v1 l a g = addEdge edge g
   where
@@ -258,9 +281,11 @@ executeSampleCommands g =
 Graph {vertexData = fromList [(1,"M1"),(5,"R(_xi_.t,\"m\",s)")], edgeData = fromList [(0,Edge {ends = (1,0), attribute = _rho_, specialLabel = [], edgeType = ParentEdge}),(1,Edge {ends = (0,1), attribute = "memory", specialLabel = [], edgeType = AttributeEdge}),(2,Edge {ends = (2,0), attribute = _rho_, specialLabel = [], edgeType = ParentEdge}),(4,Edge {ends = (3,2), attribute = _rho_, specialLabel = [], edgeType = ParentEdge}),(5,Edge {ends = (2,3), attribute = "isbn", specialLabel = [], edgeType = AttributeEdge}),(6,Edge {ends = (4,2), attribute = _rho_, specialLabel = [], edgeType = ParentEdge}),(7,Edge {ends = (2,4), attribute = "title", specialLabel = [], edgeType = AttributeEdge}),(8,Edge {ends = (2,-1), attribute = "price", specialLabel = [_Phi_,".memory"], edgeType = ParentEdge}),(9,Edge {ends = (5,2), attribute = t, specialLabel = [], edgeType = ParentEdge}),(10,Edge {ends = (0,5), attribute = "book2", specialLabel = [], edgeType = AttributeEdge})], attributeVertex = fromList [((0,"memory"),1),((1,_rho_),0),((2,"isbn"),3),((2,"price"),-1),((2,"title"),4),((2,_rho_),0),((3,_rho_),2),((4,_rho_),2),((5,t),2)], vertexCount = 6, edgeCount = 11, queried = fromList [BIND 0 1 "memory",BIND 0 2 "book2",BIND 2 3 "isbn",BIND 2 4 "title",DOT 3 "m" 0,ATOM 1 "M1",REF 2 [_Phi_,".memory"] "price"]}
 -}
 
+-- | stop dataization
 stop :: [Attribute]
 stop = [Attr "_|_"]
 
+-- calculate lambda and return locator of vertex with lambda's result
 evaluateLambda :: VertexData -> Vector -> Locator
 evaluateLambda d v = stop
 
