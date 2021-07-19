@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ecc2156119430100228775fd72ef39c7906b66be4e989587a98522b04671ea42
+-- hash: d796995f5659a12ece209781fab78aa3b8a5ae1e31c8c530bf2f53bda746ba86
 
 name:           phi-calculus
 version:        0.1.0.0
@@ -28,7 +28,7 @@ source-repository head
 library
   exposed-modules:
       Graph
-      Phi
+      LinePrint
       PhiTerms
       SampleTerms
       ULC

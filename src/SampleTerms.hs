@@ -1,6 +1,7 @@
 module SampleTerms where
 
-import PhiTerms (Term(..), linePrint)
+import PhiTerms (Term(..))
+import LinePrint (linePrint)
 
 t1 :: Term
 t1 =
