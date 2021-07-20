@@ -36,4 +36,4 @@ rrbracket :: [Char]
 rrbracket = " \\rrbracket "
 
 quad :: [Char]
-quad = " \\quad "
+quad = " \\qquad "

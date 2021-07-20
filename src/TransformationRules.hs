@@ -39,6 +39,8 @@ emptyState =
 putTerm :: Term -> IO ()
 putTerm t = putStrLn (latexedRule (rule1 (initialState t)))
 
+-- should preserve focus after returning from recursion
+-- should change focus before recursion
 rule1 :: State -> State
 rule1 s =
   s
@@ -86,7 +88,11 @@ rule1 s =
         { -- add 1 vertex for v_i_x and |list of free attributes| vertices
           vertexCounter = vertexCounter s + 1 + freeLength,
           -- switch focus to vertex v_i_x
-          focusedElementIndex = v_i_x
+          focusedElementIndex = v_i_x,
+          -- children terms don't need current gmis
+          gmis = [],
+          -- children terms don't need current latexed derivation tree
+          latexedRule = ""
         }
 
     -- | output state from conclusion
@@ -105,20 +111,32 @@ rule1 s =
         (latexLine (premiseTerm s))
         currentLatexedGMIS
         (latexedRule sFromConclusion)
-      ++ LC.quad
+        ++ LC.quad
 
+-- | can come from rule1 or from application
+-- 
+-- deals only with mappings
+-- 
+-- accumulates changes from terms in some state
 rule2 :: [Term] -> State -> State
-rule2 terms state = emptyState {latexedRule = "R2"}
+-- rule2 t s = emptyState{latexedRule = " \\text{Here is place for R2} "}
+rule2 terms state =
+  foldl combine state terms
+  where
+    combine s1 term =
+      nextState {latexedRule = latexedRule s1 ++ latexedRule nextState}
+      where 
+        nextState = 
+          s1 {premiseTerm = term, latexedRule = latexedRule s1} &
+          case term of
+            M {} -> rule1 
+            ToLocator {} -> rule3
+            ToLambda {} -> rule7
+            _ -> error "R2: strange term"
+    
 
---   case terms of
---     [] ->
--- case l of
---       -- if has several attributes, they are separated by commas, so use R2
---       [] -> error "R1: no attributes in Phi"
---       -- if has only 1 attribute, it can either be a locator or an attribute with body
---       [M {}] -> error "rule 1 called"
---       -- rule1 sIncremented
---       [ToLocator {}] -> error "rule 1 called"
---       -- rule2 sIncremented
---       _ -> rule2 sFromConclusion
--- emptyState {latexedRule = "__R2__"}
+rule3 :: State -> State
+rule3 s = s {latexedRule = " \\text{TODO: R3} " ++ LC.quad}
+
+rule7 :: State -> State
+rule7 s = s {latexedRule = " \\text{TODO: R7} " ++ LC.quad}

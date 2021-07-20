@@ -45,7 +45,7 @@ data Term
     --
     -- a [b, c] > [d>e]
     M AttributeName FreeAttributes Value
-  | -- | ToLocator == attribute name maps To Locator
+  | -- | ToLocator == mapping of attribute name To Locator
     --
     -- a > b.c
     AttributeName `ToLocator` Locator
