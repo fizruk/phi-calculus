@@ -2,6 +2,7 @@ module PhiTerms
   ( Term (..),
     Mapping,
     AttributeName,
+    Lambda,
     Locator,
   )
 where
@@ -14,7 +15,7 @@ type Mapping = Term
 -- | attribute name
 type AttributeName = Term
 -- | lambda
-type L = Term
+type Lambda = Term
 -- | list of free attributes
 type FreeAttributes = [AttributeName]
 -- | represent object body
@@ -28,7 +29,7 @@ type Locator = [AttributeNameOrCopy]
 
 
 data Term
-  = -- | \\s.M
+  = -- | \\s.MCommand
     --
     -- L == Lambda
     L String
@@ -51,4 +52,4 @@ data Term
   | -- | ToLambda == attribute name maps To some Lambda expression
     --
     -- a > \s.M
-    AttributeName `ToLambda` L
+    AttributeName `ToLambda` Lambda
