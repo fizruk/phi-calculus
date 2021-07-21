@@ -1,7 +1,7 @@
-module LatexLine (latexLine) where
+module LatexLine (latexLine, toStringSequence) where
 
 import Data.List (intercalate, intersperse, tails)
-import LatexConstants as LC
+import qualified LatexConstants as LC
   ( ksi,
     lambda,
     llbracket,
@@ -10,6 +10,7 @@ import LatexConstants as LC
     rho,
     rrbracket,
     upPhi,
+    quad
   )
 import PhiTerms as T
   ( Mapping,
@@ -24,10 +25,10 @@ toStringLocator = intercalate' "."
 
 toStringValue :: [Term] -> [Char]
 toStringValue t =
-  LC.llbracket ++ intercalate' ", " t ++ LC.rrbracket
+  LC.llbracket ++ toStringSequence t ++ LC.rrbracket
 
 toStringSequence :: [Term] -> [Char]
-toStringSequence = intercalate' ", "
+toStringSequence = intercalate' (", " ++ LC.quad)
 
 latexLine :: Term -> [Char]
 latexLine t =
@@ -48,10 +49,10 @@ latexLine t =
         ++ case attributes of
           [] -> ""
           _ -> " ( " ++ toStringSequence attributes ++ " ) "
-        ++ mapsTo
+        ++ LC.mapsTo
         ++ toStringValue value
     ((A a) `ToLocator` locator) ->
-      latexLine (A a) ++ mapsTo ++ toStringLocator locator
+      latexLine (A a) ++ LC.mapsTo ++ toStringLocator locator
     ((A a) `ToLambda` l) ->
-      latexLine (A a) ++ mapsTo ++ latexLine l
+      latexLine (A a) ++ LC.mapsTo ++ latexLine l
     _ -> ""
