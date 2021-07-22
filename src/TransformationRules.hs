@@ -3,7 +3,7 @@ module TransformationRules where
 import Commands (Command (..))
 import Data.Function ((&))
 import Data.List (intercalate)
-import qualified LatexConstants as LC (ksi, lambda, phi, quad, rho, upPhi)
+import qualified LatexConstants as LC (ksi, phi, quad, rho, upPhi)
 import LatexLine (latexLine, toStringSequence)
 import PhiTerms (Term (..))
 import qualified SampleTerms as ST
@@ -40,17 +40,17 @@ emptyState =
 putTerm :: Term -> IO ()
 putTerm t = putStrLn (latexedRule (rule1 (initialState t)))
 
--- should preserve focus after returning from recursion
--- should change focus before recursion
+-- in: appropriate focus, term, empty gmis, empty latexed rule, counters
+-- out: gmis, latexed rule, updated counters
+
 rule1 :: State -> State
-rule1 s =
-  sReturn
+rule1 sIn = sOut
   where
-    premise = premiseTerm s
+    premise = premiseTerm sIn
 
     -- deconstruct term according to R1
     -- x (a_1, a_2, ..., a_n) -> [[E]]
-    (attributeName, freeAttributes, e) =
+    (x, freeAttributes, e) =
       case premise of
         M name free [e] ->
           (name, free, e)
@@ -59,12 +59,12 @@ rule1 s =
 
     -- index of vertex at focus-> State
     -- rule2 terms state =
-    v_i = focusedElementIndex s
+    v_i = focusedElementIndex sIn
     -- index of new vertex for x
-    v_i_x = vertexCounter s + 1
+    v_i_x = vertexCounter sIn + 1
 
     -- ADD (v_i_x) BIND(v_i, v_i_x, x)
-    gmiV_i_x = [ADD v_i_x, BIND v_i v_i_x attributeName]
+    gmiV_i_x = [ADD v_i_x, BIND v_i v_i_x x]
 
     -- \forall j \in [1;n] (ADD (v_i_x_j) BIND (v_i_x, v_i_x_j, a_j)
     freeLength = length freeAttributes
@@ -80,80 +80,80 @@ rule1 s =
     -- GMIs produced by this rule
     gmisCurrent = gmiV_i_x ++ gmisFree
 
-    sForConclusion =
-      s
+    sForV =
+      sIn
         {
           -- switch focus to vertex v_i_x
           focusedElementIndex = v_i_x,
           -- add 1 vertex for v_i_x and |list of free attributes| vertices
-          vertexCounter = vertexCounter s + 1 + freeLength,
+          vertexCounter = vertexCounter sIn + 1 + freeLength,
           -- children terms don't need current gmis
           gmis = gmis emptyState,
           -- children terms don't need current latexed derivation tree
           latexedRule = latexedRule emptyState
         }
 
-    sFromConclusion = rule2 e sForConclusion
+    sFromV = rule2 e sForV
 
     -- latexed current rule
     rule =
       printf
         "\\dfrac{ v_%d | %s }{ %s %s } R1 "
-        (focusedElementIndex s)
-        (latexLine (premiseTerm s))
+        (focusedElementIndex sIn)
+        (latexLine (premiseTerm sIn))
         (getLatexedGmis gmisCurrent)
-        (latexedRule sFromConclusion)
+        (latexedRule sFromV)
         ++ LC.quad
 
     -- finally, state to return
-    sReturn =
-      sFromConclusion
+    sOut =
+      sFromV
         { latexedRule = rule,
-          gmis = gmisCurrent ++ gmis sFromConclusion
+          gmis = gmisCurrent ++ gmis sFromV
         }
 
 -- | can come from rule1 or from application
 --
--- deals only with mappings
---
 -- accumulates changes from terms in some state
 rule2 :: [Term] -> State -> State
-rule2 terms state =
-  sReturn
+rule2 terms sIn = sOut
   where
-    combine s1 term =
-      nextState {
-        latexedRule = latexedRule s1 ++ latexedRule nextState,
-        gmis = gmis s1 ++ gmis nextState
-      }
+    -- transfer from current state and term into the next state
+    combine state term = sCombined
       where
         nextState =
-          s1 {premiseTerm = term, latexedRule = latexedRule s1}
+          state {premiseTerm = term, latexedRule = latexedRule emptyState}
             & case term of
               M {} -> rule1
               ToLocator {} -> rule3
               ToLambda {} -> rule7
               _ -> error "R2: strange term"
+        sCombined = 
+          nextState {
+            latexedRule = latexedRule state ++ latexedRule nextState,
+            gmis = gmis state ++ gmis nextState
+          }
+    
+    -- combine all terms' states into one
+    sCombinedAll = foldl combine sIn terms
 
-    combinedState = foldl combine state terms
-
-    latexedConclusion = printf " %s " (latexedRule combinedState) :: String
-
-    sReturn =
-      combinedState
+    -- output state from the rule
+    sOut =
+      sCombinedAll
         { latexedRule =
             case terms of
+              -- if one element in the list, we don't need R2
               [_] -> latexedConclusion
               _ -> 
                 printf " \\dfrac { v_%d | %s } { %s } R2"
-                  (focusedElementIndex state)
+                  (focusedElementIndex sIn)
                   (toStringSequence terms)
                   latexedConclusion
         }
+      where 
+        latexedConclusion = 
+          printf " %s " (latexedRule sCombinedAll)
 
-
--- in: term, empty gmis, empty latexed rule, counters
--- out: gmis, latexed rule
 
 -- I assume d_i are names of attributes that refer to data via lambdas
 -- They should be prefixed with a /, like /1
@@ -164,7 +164,7 @@ getLatexedGmis = concatMap show
 rule3 :: State -> State
 -- rule3 s = s {latexedRule = " \\text{TODO: R3} " ++ LC.quad}
 rule3 s =
-  sReturn
+  sOut
   where
     term = premiseTerm s
     (a, x, e) =
@@ -176,8 +176,8 @@ rule3 s =
 
     gmisCurrent = [REF e_i_a v_i x a]
 
-    -- for v_i | x
-    sForVConclusion =
+    -- state for v_i | x
+    sForV =
       s {
         focusedElementIndex = v_i,
         premiseTerm = x,
@@ -185,20 +185,24 @@ rule3 s =
         latexedRule = latexedRule emptyState
       }
 
-    -- from v_i_x
-    sFromVConclusion = rule6 sForVConclusion
+    -- state from v_i | x
+    sFromV = rule6 sForV
 
-    sForEConclusion =
-      sFromVConclusion {
+    -- state for e_i_a | E
+    sForE =
+      sFromV {
         focusedElementIndex = e_i_a,
+        
         premiseTerm = premiseTerm emptyState,
         latexedRule = latexedRule emptyState,
         gmis = gmis emptyState,
+
         edgeCounter = e_i_a
       }
 
-    sFromEConclusion =
-      sForEConclusion &
+    -- state from e_i_a | E
+    sFromE =
+      sForE &
       case term of
         _ `ToLocator` [_, A{}] -> rule4 e
         _ `ToLocator` [_, App{}] -> rule5 e
@@ -207,16 +211,17 @@ rule3 s =
         _ `ToLocator` [_] -> id
         _ -> error "R3: unknown term inside locator"
 
-    sReturn = sFromEConclusion {
-      gmis = gmisCurrent ++ gmis sFromEConclusion,
+    -- output state from the rule
+    sOut = sFromE {
+      gmis = gmisCurrent ++ gmis sFromE,
       latexedRule =
         printf
           " \\dfrac { v_%d | %s } {%s %s %s} R3 "
           (focusedElementIndex s)
           (latexLine term)
           (getLatexedGmis gmisCurrent)
-          (latexedRule sFromVConclusion)
-          (latexedRule sFromEConclusion)
+          (latexedRule sFromV)
+          (latexedRule sFromE)
         ++ LC.quad 
     }
 
@@ -224,6 +229,12 @@ rule3 s =
 
 rule4 :: [Term] -> State -> State
 rule4 t s = s {latexedRule = " \\text{TODO: R4} " ++ LC.quad}
+-- rule4 t s = sReturn
+--   where
+    
+--     sReturn = s
+
+
 
 rule5 :: [Term] -> State -> State
 rule5 t s = s {latexedRule = " \\text{TODO: R5} " ++ LC.quad}

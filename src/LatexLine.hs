@@ -3,7 +3,7 @@ module LatexLine (latexLine, toStringSequence) where
 import Data.List (intercalate, intersperse, tails)
 import qualified LatexConstants as LC
   ( ksi,
-    lambda,
+    lambdaS,
     llbracket,
     mapsTo,
     phi,
@@ -30,6 +30,7 @@ toStringValue t =
 toStringSequence :: [Term] -> [Char]
 toStringSequence = intercalate' (", " ++ LC.quad)
 
+
 latexLine :: Term -> [Char]
 latexLine t =
   case t of
@@ -41,7 +42,7 @@ latexLine t =
         "@" -> LC.phi
         _ -> a
     (L l) ->
-      LC.lambda ++ tails l !! 3
+      LC.lambdaS ++ tails l !! 3
     ((A a) `App` [value]) ->
       latexLine (A a) ++ " ( " ++ toStringValue value ++ " ) "
     (M (A a) attributes [value]) ->

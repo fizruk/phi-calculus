@@ -5,6 +5,7 @@ module LatexConstants
     upPhi,
     phi,
     lambda,
+    lambdaS,
     llbracket,
     rrbracket,
     quad
@@ -27,7 +28,10 @@ phi :: [Char]
 phi = " \\varphi "
 
 lambda :: [Char]
-lambda = " \\lambda s. "
+lambda = " \\lambda "
+
+lambdaS :: [Char]
+lambdaS = lambda ++ " s. "
 
 llbracket :: [Char]
 llbracket = " \\llbracket "

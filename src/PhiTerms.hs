@@ -4,6 +4,7 @@ module PhiTerms
     AttributeName,
     Lambda,
     Locator,
+    AttributeNameOrCopy
   )
 where
 

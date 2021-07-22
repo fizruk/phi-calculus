@@ -2,64 +2,45 @@ module SampleTerms where
 
 import LatexLine (latexLine)
 import PhiTerms (Term (..))
+import qualified LatexConstants as LC(lambda, lambdaS)
+import Text.Printf (printf)
 
-t1 :: Term
-t1 =
-  M
-    (A "a")
-    [A "b", A "c"]
-    [ [ A "d" `ToLocator` [A "^"]
-      ]
-    ]
+getLambda :: Show a => a -> [Term]
+getLambda e = [A "#", A (LC.lambda ++ printf "(%s)" (show e) )]
 
-t2 :: Term
-t2 =
-  M
-    (A "obj")
-    []
-    [ [ M
-          (A "x")
-          [A "b"]
-          [ [ A "a" `ToLocator` [A "^", A "y"]
-            ]
-          ]
-      ]
-    ]
+selectLambda :: Term
+selectLambda = A (LC.lambda ++ "(E)") `ToLambda` L (LC.lambdaS ++ " select ( E ) ")
 
 -- I suggest we mark data with /
 t4 :: Term
 t4 =
   M (A "#") [] [[ -- Data
-    A "/1" `ToLambda` L "\\s.(Int\\ 1)",
-    A "/2" `ToLambda` L "\\s.(Int\\ 2)",
+    selectLambda,
     -- Terms
-    M (A "obj") [] [[ 
-      M (A "x") [A "b"] [[ 
+    M (A "obj") [] [[
+      M (A "x") [A "b"] [[
         A "a" `ToLocator` [A "^", A "y"]
       ]],
-      
-      A "y" `ToLocator` [A "1"],
-      M (A "z") [] [[ 
-        A "y" `ToLocator` [A "#", A "/2"],
+
+      A "y" `ToLocator` getLambda "Integer 1",
+      M (A "z") [] [[
+        A "y" `ToLocator` getLambda "Integer 2",
         A "w"
-          `ToLocator` [ 
+          `ToLocator` [
             A "#",
-            A "x" `App` [[ 
-              A "b" `ToLocator` [A "#", A "/2"]
+            A "x" `App` [[
+              A "b" `ToLocator` getLambda "Integer 2"
             ]]
            ]
       ]]
     ]],
-    A "/stdout" `ToLambda` L "\\s.(Function\\ stdout)",
     M (A "app") [] [[
       A "@"
-        `ToLocator` [
-          A "#",
-          A "/stdout",
+        `ToLocator` (getLambda "Function stdout(text)" ++ [
           A "sprintf" `App` [[
-            A "arg_1" `ToLocator` [A "#", A "/\"\\%s\""],
+            A "arg_1" `ToLocator` getLambda "String %s",
             A "arg_2" `ToLocator` [A "#", A "obj", A "z", A "w", A "a"]
-           ]]
-        ]
+          ]]
+        ])
     ]]
   ]]
