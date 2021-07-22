@@ -1,4 +1,4 @@
-module LatexLine (latexLine, toStringSequence) where
+module LatexLine (latexLine, toStringSequence, toStringValue, toStringLocator) where
 
 import Data.List (intercalate, intersperse, tails)
 import qualified LatexConstants as LC
@@ -42,7 +42,7 @@ latexLine t =
         "@" -> LC.phi
         _ -> a
     (L l) ->
-      LC.lambdaS ++ tails l !! 3
+      LC.lambdaS ++ l
     ((A a) `App` [value]) ->
       latexLine (A a) ++ " ( " ++ toStringValue value ++ " ) "
     (M (A a) attributes [value]) ->

@@ -2,9 +2,9 @@ module TransformationRules where
 
 import Commands (Command (..))
 import Data.Function ((&))
-import Data.List (intercalate)
+import Data.List (intercalate, tails)
 import qualified LatexConstants as LC (ksi, phi, quad, rho, upPhi)
-import LatexLine (latexLine, toStringSequence)
+import LatexLine (latexLine, toStringLocator, toStringSequence, toStringValue)
 import PhiTerms (Term (..))
 import qualified SampleTerms as ST
 import Text.Printf (printf)
@@ -40,8 +40,9 @@ emptyState =
 putTerm :: Term -> IO ()
 putTerm t = putStrLn (latexedRule (rule1 (initialState t)))
 
--- in: appropriate focus, term, empty gmis, empty latexed rule, counters
--- out: gmis, latexed rule, updated counters
+-- states:
+--  in: appropriate focus, premise term (not always), empty gmis, empty latexed rule, counters
+--  out: same focused element, gmis, latexed rule, updated counters
 
 rule1 :: State -> State
 rule1 sIn = sOut
@@ -82,14 +83,11 @@ rule1 sIn = sOut
 
     sForV =
       sIn
-        {
-          -- switch focus to vertex v_i_x
+        { -- switch focus to vertex v_i_x
           focusedElementIndex = v_i_x,
           -- add 1 vertex for v_i_x and |list of free attributes| vertices
           vertexCounter = vertexCounter sIn + 1 + freeLength,
-          -- children terms don't need current gmis
           gmis = gmis emptyState,
-          -- children terms don't need current latexed derivation tree
           latexedRule = latexedRule emptyState
         }
 
@@ -98,17 +96,18 @@ rule1 sIn = sOut
     -- latexed current rule
     rule =
       printf
-        "\\dfrac{ v_%d | %s }{ %s %s } R1 "
+        "\\dfrac{ v_{%d} | %s }{ %s %s } R1 %s"
         (focusedElementIndex sIn)
         (latexLine (premiseTerm sIn))
         (getLatexedGmis gmisCurrent)
         (latexedRule sFromV)
-        ++ LC.quad
+        LC.quad
 
     -- finally, state to return
     sOut =
       sFromV
-        { latexedRule = rule,
+        { focusedElementIndex = focusedElementIndex sIn,
+          latexedRule = rule,
           gmis = gmisCurrent ++ gmis sFromV
         }
 
@@ -116,6 +115,7 @@ rule1 sIn = sOut
 --
 -- accumulates changes from terms in some state
 rule2 :: [Term] -> State -> State
+-- rule2 t s = s {latexedRule = " \\text{TODO: R2} " ++ LC.quad}
 rule2 terms sIn = sOut
   where
     -- transfer from current state and term into the next state
@@ -128,12 +128,12 @@ rule2 terms sIn = sOut
               ToLocator {} -> rule3
               ToLambda {} -> rule7
               _ -> error "R2: strange term"
-        sCombined = 
-          nextState {
-            latexedRule = latexedRule state ++ latexedRule nextState,
-            gmis = gmis state ++ gmis nextState
-          }
-    
+        sCombined =
+          nextState
+            { latexedRule = latexedRule state ++ latexedRule nextState,
+              gmis = gmis state ++ gmis nextState
+            }
+
     -- combine all terms' states into one
     sCombinedAll = foldl combine sIn terms
 
@@ -144,116 +144,167 @@ rule2 terms sIn = sOut
             case terms of
               -- if one element in the list, we don't need R2
               [_] -> latexedConclusion
-              _ -> 
-                printf " \\dfrac { v_%d | %s } { %s } R2"
+              _ ->
+                printf
+                  " \\dfrac { v_{%d} | %s } { %s } R2"
                   (focusedElementIndex sIn)
                   (toStringSequence terms)
                   latexedConclusion
         }
-      where 
-        latexedConclusion = 
+      where
+        latexedConclusion =
           printf " %s " (latexedRule sCombinedAll)
-
 
 -- I assume d_i are names of attributes that refer to data via lambdas
 -- They should be prefixed with a /, like /1
 
-getLatexedGmis :: (Foldable t, Show a) => t a -> [Char]
+getLatexedGmis :: [Command] -> [Char]
 getLatexedGmis = concatMap show
 
 rule3 :: State -> State
 -- rule3 s = s {latexedRule = " \\text{TODO: R3} " ++ LC.quad}
-rule3 s =
-  sOut
+rule3 sIn = sOut
   where
-    term = premiseTerm s
-    (a, x, e) =
+    term = premiseTerm sIn
+    -- a x E from a -> x E
+    (a, x, expr) =
       case term of
-        a `ToLocator` (x:e) -> (a, x, e)
+        a `ToLocator` (x : expr) -> (a, x, expr)
         _ -> error "R3: empty locator"
-    e_i_a = edgeCounter s + 1
-    v_i = focusedElementIndex s
+    e_i_a = edgeCounter sIn + 1
+    v_i = focusedElementIndex sIn
 
+    -- gmis produced by this rule
     gmisCurrent = [REF e_i_a v_i x a]
 
     -- state for v_i | x
     sForV =
-      s {
-        focusedElementIndex = v_i,
-        premiseTerm = x,
-        gmis = gmis emptyState,
-        latexedRule = latexedRule emptyState
-      }
+      sIn
+        { focusedElementIndex = v_i,
+          premiseTerm = x,
+          gmis = gmis emptyState,
+          latexedRule = latexedRule emptyState
+        }
 
     -- state from v_i | x
     sFromV = rule6 sForV
 
     -- state for e_i_a | E
     sForE =
-      sFromV {
-        focusedElementIndex = e_i_a,
-        
-        premiseTerm = premiseTerm emptyState,
-        latexedRule = latexedRule emptyState,
-        gmis = gmis emptyState,
-
-        edgeCounter = e_i_a
-      }
+      sFromV
+        { focusedElementIndex = e_i_a,
+          edgeCounter = e_i_a,
+          premiseTerm = premiseTerm emptyState,
+          latexedRule = latexedRule emptyState,
+          gmis = gmis emptyState
+        }
 
     -- state from e_i_a | E
-    sFromE =
-      sForE &
-      case term of
-        _ `ToLocator` [_, A{}] -> rule4 e
-        _ `ToLocator` [_, App{}] -> rule5 e
-        _ `ToLocator` [_, A{}, _] -> rule4 e
-        _ `ToLocator` [_, App{}, _] -> rule5 e
-        _ `ToLocator` [_] -> id
-        _ -> error "R3: unknown term inside locator"
+    sFromE = rule4 expr sForE
 
     -- output state from the rule
-    sOut = sFromE {
-      gmis = gmisCurrent ++ gmis sFromE,
-      latexedRule =
-        printf
-          " \\dfrac { v_%d | %s } {%s %s %s} R3 "
-          (focusedElementIndex s)
-          (latexLine term)
-          (getLatexedGmis gmisCurrent)
-          (latexedRule sFromV)
-          (latexedRule sFromE)
-        ++ LC.quad 
-    }
+    sOut =
+      sFromE
+        { focusedElementIndex = focusedElementIndex sIn,
+          gmis = gmisCurrent ++ gmis sFromE,
+          latexedRule =
+            printf
+              " \\dfrac { v_{%d} | %s } {%s %s %s} R3 "
+              (focusedElementIndex sIn)
+              (latexLine term)
+              (getLatexedGmis gmisCurrent)
+              (latexedRule sFromV)
+              (latexedRule sFromE)
+              ++ LC.quad
+        }
 
-
+-- no assumptions on start of list
 
 rule4 :: [Term] -> State -> State
-rule4 t s = s {latexedRule = " \\text{TODO: R4} " ++ LC.quad}
--- rule4 t s = sReturn
---   where
-    
---     sReturn = s
+-- rule4 t s = s {latexedRule = " \\text{TODO: R4} " ++ LC.quad}
+rule4 t sIn = sOut
+  where
+    x : e = t
+    sOut =
+      case t of
+        [] ->
+          sIn
+            { latexedRule = ""
+            }
+        _ ->
+          sFromE
+            { focusedElementIndex = focusedElementIndex sIn,
+              gmis = gmisCurrent,
+              latexedRule =
+                printf
+                  " \\dfrac { e_{%d} | .%s %s %s} { %s %s} R4"
+                  e_i
+                  (latexLine xName)
+                  LC.quad
+                  (xAppObjectLatexed ++ latexedRemainingLocator)
+                  (getLatexedGmis gmisCurrent)
+                  (latexedRule sFromE)
+            }
+          where
+            e_i = focusedElementIndex sIn
+            v_i_x = vertexCounter sIn + 1
+            e_i_x_1 = e_i + 1
 
+            (xName, xAppObjectLatexed) =
+              case x of
+                name@(A a) ->
+                  (name, "")
+                name@(A a) `App` [object] ->
+                  ( name,
+                    printf
+                      " ( %s ) "
+                      (toStringValue object)
+                  )
+                _ ->
+                  error "R4: unknown term in locator"
+              
+            latexedRemainingLocator = 
+              case e of
+                  [] -> ""
+                  _ -> "." ++ toStringLocator e
 
+            gmisCurrent = [DOT e_i xName v_i_x e_i_x_1]
+
+            sForE =
+              sIn
+                { focusedElementIndex = e_i_x_1,
+                  vertexCounter = v_i_x,
+                  edgeCounter = e_i_x_1
+                }
+
+            sFromE =
+              sForE
+                & case x of
+                  A {} -> rule4 e
+                  App {} -> rule5 t
+                  _ -> error "R4: unknown element of locator"
 
 rule5 :: [Term] -> State -> State
 rule5 t s = s {latexedRule = " \\text{TODO: R5} " ++ LC.quad}
-
+-- rule5 t sIn = sOut
+--   where 
+    -- sOut = sIn
 rule6 :: State -> State
 rule6 s = s {latexedRule = " \\text{TODO: R6} " ++ LC.quad}
--- rule6 s = 
+
+-- rule6 s =
 --   case x of
 --         -- if data
 --         A ('/':_) -> sReturn
 --         -- else
 --         _ -> s {
---           latexedRule = 
---             printf 
---               " \\ dfrac {v_%d | %s} {} "
+--           latexedRule =
+--             printf
+--               " \\ dfrac {v_{%d} | %s} {} "
 --               v_i
 --               (latexLine x)
 --         }
---   where 
+--   where
 --     x = premiseTerm s
 
 rule7 :: State -> State

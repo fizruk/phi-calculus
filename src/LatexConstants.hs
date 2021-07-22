@@ -31,7 +31,7 @@ lambda :: [Char]
 lambda = " \\lambda "
 
 lambdaS :: [Char]
-lambdaS = lambda ++ " s. "
+lambdaS = " \\lambda s. "
 
 llbracket :: [Char]
 llbracket = " \\llbracket "
