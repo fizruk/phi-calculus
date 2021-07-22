@@ -23,11 +23,11 @@ instance Show Command where
     where
       s =
         case t of
-          ADD v -> printf " ADD(v_%d) " v
-          BIND v1 v2 (A a) -> printf " BIND(v_%d, v_%d, %s) " v1 v2 (latexLine (A a))::String
-          DOT e1 (A a) v e2 -> printf " DOT(e_%d, %s, v_%d, e_%d) " e1 (latexLine (A a)) v e2
-          COPY e1 v e2 -> printf " COPY(e_%d, v_%d, e_%d) " e1 v e2
-          ATOM v l -> printf " ATOM(v_%d, %s %s) " v LC.lambdaS (latexLine l)
-          REF e v l (A a) -> printf " REF(e_%d, v_%d, %s, %s) " e v (latexLine l) (latexLine (A a))
+          ADD v -> printf " ADD(v_{%d}) " v
+          BIND v1 v2 (A a) -> printf " BIND(v_{%d}, v_{%d}, %s) " v1 v2 (latexLine (A a))::String
+          DOT e1 (A a) v e2 -> printf " DOT(e_{%d}, %s, v_{%d}, e_{%d}) " e1 (latexLine (A a)) v e2
+          COPY e1 v e2 -> printf " COPY(e_{%d}, v_{%d}, e_{%d}) " e1 v e2
+          ATOM v l -> printf " ATOM(v_{%d}, %s %s) " v LC.lambdaS (latexLine l)
+          REF e v l (A a) -> printf " REF(e_{%d}, v_{%d}, %s, %s) " e v (latexLine l) (latexLine (A a))
           _ -> error "Incorrect GMI"
 

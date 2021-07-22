@@ -37,8 +37,9 @@ emptyState =
       gmis = []
     }
 
+-- putTerm :: Term -> IO ()
 putTerm :: Term -> IO ()
-putTerm t = putStrLn (latexedRule (rule1 (initialState t)))
+putTerm t = writeFile "out.txt" (latexedRule (rule1 (initialState t)))
 
 -- states:
 --  in: appropriate focus, premise term (not always), empty gmis, empty latexed rule, counters
@@ -262,8 +263,8 @@ rule4 t sIn = sOut
                   )
                 _ ->
                   error "R4: unknown term in locator"
-              
-            latexedRemainingLocator = 
+
+            latexedRemainingLocator =
               case e of
                   [] -> ""
                   _ -> "." ++ toStringLocator e
@@ -285,10 +286,55 @@ rule4 t sIn = sOut
                   _ -> error "R4: unknown element of locator"
 
 rule5 :: [Term] -> State -> State
-rule5 t s = s {latexedRule = " \\text{TODO: R5} " ++ LC.quad}
--- rule5 t sIn = sOut
---   where 
-    -- sOut = sIn
+-- rule5 t s = s {latexedRule = " \\text{TODO: R5} " ++ LC.quad}
+rule5 t sIn = sOut
+  where
+    (_ `App` [terms]) : e = t
+
+    e_i = focusedElementIndex sIn
+    v_i_1 = vertexCounter sIn + 1
+    e_i_2 = e_i + 1
+
+    e1Latexed = toStringValue terms
+
+    e2Latexed =
+      case e of
+          [] -> ""
+          _ -> "." ++ toStringLocator e
+
+    gmisCurrent = [COPY e_i v_i_1 e_i_2]
+
+    sForE1 =
+      sIn
+        { focusedElementIndex = v_i_1,
+          vertexCounter = v_i_1,
+          edgeCounter = e_i_2
+        }
+
+    sFromE1 = rule2 terms sForE1
+
+    sForE2 = 
+      sFromE1 {
+        focusedElementIndex = e_i_2
+      }
+    
+    sFromE2 = rule4 e sForE2
+
+    sOut = 
+      sFromE2 {
+        focusedElementIndex = focusedElementIndex sIn,
+        gmis = gmisCurrent ++ gmis sFromE2,
+        latexedRule = 
+          printf 
+            "\\dfrac { e_{%d} | ( %s ) %s } { %s %s %s } R5"
+            e_i
+            e1Latexed
+            e2Latexed
+            (getLatexedGmis gmisCurrent)
+            (latexedRule sFromE1)
+            (latexedRule sFromE2)
+      }
+
 rule6 :: State -> State
 rule6 s = s {latexedRule = " \\text{TODO: R6} " ++ LC.quad}
 

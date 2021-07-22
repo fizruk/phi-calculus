@@ -6,10 +6,10 @@ import qualified LatexConstants as LC(lambda, lambdaS)
 import Text.Printf (printf)
 
 getLambda :: String -> [Term]
-getLambda e = [A "#", A (LC.lambda ++ printf " ( %s ) " e )]
+getLambda e = [A "#", A LC.lambda `App` [[A "expr" `ToLocator` [A e]]]]
 
 lambdaSelect :: Term
-lambdaSelect = A (LC.lambda ++ "(E)") `ToLambda` L " select ( E ) "
+lambdaSelect = A (LC.lambda ++ "( expr )") `ToLambda` L " select ( expr ) "
 
 
 -- how to distinguish between data and non-data?
