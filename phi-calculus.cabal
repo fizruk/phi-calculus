@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 25767eda0e8c4a6723e911c29bae94e5b59e271dcbf35e86da7a24a4e4894798
+-- hash: 569d7d1a4202819e07b677835f94f4bf8b9bccc735c17596427b9b8cf328591b
 
 name:           phi-calculus
 version:        0.1.0.0
@@ -33,8 +33,12 @@ library
       Paths_phi_calculus
   hs-source-dirs:
       src
+  ghc-options: -Wall -fno-warn-type-defaults
   build-depends:
       base >=4.7 && <5
+    , hashable
+    , prettyprinter
+    , unordered-containers
   default-language: Haskell2010
 
 executable phi-calculus-exe
@@ -43,10 +47,13 @@ executable phi-calculus-exe
       Paths_phi_calculus
   hs-source-dirs:
       app
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -fno-warn-type-defaults -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , hashable
     , phi-calculus
+    , prettyprinter
+    , unordered-containers
   default-language: Haskell2010
 
 test-suite phi-calculus-test
@@ -56,8 +63,11 @@ test-suite phi-calculus-test
       Paths_phi_calculus
   hs-source-dirs:
       test
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -fno-warn-type-defaults -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , hashable
     , phi-calculus
+    , prettyprinter
+    , unordered-containers
   default-language: Haskell2010
