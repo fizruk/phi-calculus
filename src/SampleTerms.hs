@@ -6,10 +6,10 @@ import qualified LatexConstants as LC(lambda, lambdaS)
 import Text.Printf (printf)
 
 getLambda :: String -> [Term]
-getLambda e = [A "#", A LC.lambda `App` [[A "expr" `ToLocator` [A e]]]]
+getLambda e = [A "#", A LC.lambda `App` [[A "expr" `ToLambda` L e]]]
 
-lambdaSelect :: Term
-lambdaSelect = A (LC.lambda ++ "( expr )") `ToLambda` L " select ( expr ) "
+specialLambdaAttribute :: Term
+specialLambdaAttribute = A (LC.lambda ++ "( expr )") `ToLambda` L " select ( expr ) "
 
 
 -- how to distinguish between data and non-data?
@@ -21,7 +21,7 @@ lambdaSelect = A (LC.lambda ++ "( expr )") `ToLambda` L " select ( expr ) "
 t4 :: Term
 t4 =
   M (A "#") [] [[ -- Data
-    lambdaSelect,
+    specialLambdaAttribute,
     -- Terms
     M (A "obj") [] [[
       M (A "x") [A "b"] [[
@@ -49,4 +49,24 @@ t4 =
           ]]
         ])
     ]]
+  ]]
+
+t5 :: Term
+t5 =
+  M (A"#") [] [[
+    A"x" `ToLambda` L "Integer\\ 3",
+    A"y" `ToLambda` L "Integer\\ 4",
+    A"sum(x, y)" `ToLambda` L "Function\\ sum(\\ksi.x, \\ksi.y)"
+  ]]
+
+t6 :: Term
+t6 =
+  M (A"#") [] [[
+    M (A"a") [A"x"] [[
+      A"y" `ToLocator` [A"$", A"x"]
+    ]],
+    A"a1"
+      `ToLocator` [
+        A"a" `App` [[A"x" `ToLambda` L "Integer\\ 3"]]
+      ]
   ]]

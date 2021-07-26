@@ -16,7 +16,7 @@ mapsTo :: [Char]
 mapsTo = " \\mapsto "
 
 ksi :: [Char]
-ksi = " \\ksi "
+ksi = " \\xi "
 
 rho :: [Char]
 rho = " \\rho "
