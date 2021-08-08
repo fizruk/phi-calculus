@@ -1,33 +1,38 @@
-module PhiTerms
+module PhiGrammar
   ( Term (..),
     Mapping,
     AttributeName,
     Lambda,
     Locator,
-    AttributeNameOrCopy
+    AttributeNameOrCopy,
   )
 where
 
 import Data.List (intercalate, intersperse, tails)
 
 -- Term Grammar
+
 -- | any mapping a > b
 type Mapping = Term
+
 -- | attribute name
 type AttributeName = Term
+
 -- | lambda
 type Lambda = Term
+
 -- | list of free attributes
 type FreeAttributes = [AttributeName]
+
 -- | represent object body
--- 
+--
 -- imitate double brackets via nested list
 type Value = [[Mapping]]
 
 type AttributeNameOrCopy = Term
+
 -- | list of attribute names and applications
 type Locator = [AttributeNameOrCopy]
-
 
 data Term
   = -- | \\s.MCommand

@@ -1,8 +1,8 @@
 module SampleTerms where
 
+import qualified LatexConstants as LC (lambda, lambdaS)
 import LatexLine (latexLine)
-import PhiTerms (Term (..))
-import qualified LatexConstants as LC(lambda, lambdaS)
+import PhiGrammar (Term (..))
 import Text.Printf (printf)
 
 getLambda :: String -> [Term]
@@ -11,12 +11,30 @@ getLambda e = [A "#", A LC.lambda `App` [[A "expr" `ToLambda` L e]]]
 specialLambdaAttribute :: Term
 specialLambdaAttribute = A (LC.lambda ++ "( expr )") `ToLambda` L " select ( expr ) "
 
-
 -- how to distinguish between data and non-data?
 -- possibly, data is always \lambda (Expr)
 
 -- what if a vertex is a locator to data?
 -- then during dataization, we'll come to the actual vertex
+
+t3 :: Term
+t3 =
+  M (A"#") [] [[
+    M (A"x") [A"c"] [[]],
+    A"e"
+      `ToLocator` [
+          A"$",
+          A"x"
+            `App`[[
+              M (A"c") [A"d"] [[]]
+            ]],
+          A"c"
+            `App` [[
+              A"d" `ToLambda` L "3"
+            ]]
+      ]
+  ]]
+
 
 t4 :: Term
 t4 =

@@ -7,12 +7,12 @@ import qualified LatexConstants as LC
     llbracket,
     mapsTo,
     phi,
+    quad,
     rho,
     rrbracket,
     upPhi,
-    quad
   )
-import PhiTerms as T
+import PhiGrammar as T
   ( Mapping,
     Term (..),
   )
@@ -29,7 +29,6 @@ toStringValue t =
 
 toStringSequence :: [Term] -> [Char]
 toStringSequence = intercalate' (", " ++ LC.quad)
-
 
 latexLine :: Term -> [Char]
 latexLine t =

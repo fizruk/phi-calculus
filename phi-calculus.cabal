@@ -31,7 +31,7 @@ library
       Graph
       LatexConstants
       LatexLine
-      PhiTerms
+      PhiGrammar
       SampleTerms
       TransformationRules
       ULC
