@@ -5,7 +5,7 @@ import Data.Function ((&))
 import Data.List (intercalate, tails)
 import qualified LatexConstants as LC (ksi, phi, quad, rho, upPhi)
 import LatexLine (latexLine, toStringLocator, toStringSequence, toStringValue)
-import qualified PhiTerms as PT(Term (..), Locator, AttributeName)
+import qualified PhiTerms as PT (AttributeName, Locator, Term (..))
 import qualified SampleTerms as ST
 import Text.Printf (printf)
 
@@ -40,17 +40,26 @@ emptyState =
 -- putTerm :: Term -> IO ()
 putTerm :: PT.Term -> IO ()
 putTerm t =
-  writeFile "out.txt"
-    (printf "\\begin{array}{c} %s \\\\ \\\\ \\mathtt{GMIs} \\\\ %s \\end{array}"
-      (latexedRule runTransformation)
-      (getLatexedGmis (gmis runTransformation)))
-  where runTransformation = rule1 (initialState t)
+  writeFile
+    "out.txt"
+    ( printf
+        "\\begin{array}{l} %s \\\\ \\mathtt{GMIs} \\\\ %s \\end{array}"
+        (latexedRule runTransformation)
+        latexedGMIs
+    )
+  where
+    runTransformation = rule1 (initialState t)
+    currentGMIs = gmis runTransformation
+    latexedGMIs = concat indexedGMIs
+      where
+        showLine = \index gmi -> printf "%d: %s \\\\" index (show gmi)::String
+        indexedGMIs= zipWith showLine [0..(length currentGMIs)] currentGMIs
+
 -- putTerm t = writeFile "out.txt" (getLatexedGmis (gmis (rule1 (initialState t))))
 
 -- TODO: let getting just GMIs
 -- getGMIsAfterTransformation :: PT.Term -> [Command]
 -- getGMIsAfterTransformation t = rule1 initialState t
-   
 
 getLatexedGmis :: [Command] -> [Char]
 -- getLatexedGmis = concatMap show
@@ -86,7 +95,7 @@ rule1 sIn = sOut
     -- \forall j \in [1;n] (ADD (v_i_x_j) BIND (v_i_x, v_i_x_j, a_j)
     freeLength = length freeAttributes
     getGmisForFreeAttributes (name : xs) =
-      [ ADD (v_i_x + freeLength - length xs) ,
+      [ ADD (v_i_x + freeLength - length xs),
         BIND v_i_x (v_i_x + freeLength - length xs) name
       ]
         ++ getGmisForFreeAttributes xs
@@ -190,8 +199,7 @@ elementsOfLocatorId x = (xName, xAppObjectLatexed)
         _ ->
           error "Unknown term in locator"
 
-
-latexedRemainingLocator :: PT.Locator  -> [Char]
+latexedRemainingLocator :: PT.Locator -> [Char]
 latexedRemainingLocator e =
   case e of
     [] -> ""
@@ -227,11 +235,12 @@ rule3 sIn = sOut
         }
 
     -- state from v_i | x
-    sFromV = sForV {
-      -- no use for rule 6. data are in lambdas
-      -- TODO: remove call to v_i|x
-      latexedRule = latexedRule emptyState
-    }
+    sFromV =
+      sForV
+        { -- no use for rule 6. data are in lambdas
+          -- TODO: remove call to v_i|x
+          latexedRule = latexedRule emptyState
+        }
 
     -- state for e_i_a | E
     sForE =
@@ -246,8 +255,8 @@ rule3 sIn = sOut
     -- state from e_i_a | E
     sFromE =
       case x of
-        PT.A{} -> rule4 e sForE
-        PT.App {} -> rule5 (x:e) sForE
+        PT.A {} -> rule4 e sForE
+        PT.App {} -> rule5 (x : e) sForE
         _ -> error "R3: Unknown element of locator"
 
     -- output state from the rule
@@ -273,49 +282,52 @@ rule4 :: [PT.Term] -> State -> State
 rule4 t sIn = sOut
   where
     x : e = t
-    sIfNotEmptyLocator =
-      sFromE
-        { focusedElementIndex = focusedElementIndex sIn,
-          gmis = gmisCurrent,
-          latexedRule =
-            printf
-              " \\dfrac { e_{%d} | .%s %s %s} { %s %s} R4"
-              e_i
-              (latexLine xName)
-              LC.quad
-              (xAppObjectLatexed ++ latexedE)
-              (getLatexedGmis gmisCurrent)
-              (latexedRule sFromE)
-        }
-      where
-        e_i = focusedElementIndex sIn
-        v_i_x = vertexCounter sIn + 1
-        e_i_x_1 = e_i + 1
-
-        (xName, xAppObjectLatexed) = elementsOfLocatorId x
-
-        latexedE = latexedRemainingLocator e
-          -- latexedRemainingLocator e
-
-        gmisCurrent = [DOT e_i xName v_i_x e_i_x_1]
-
-        sForE =
-          sIn
-            { focusedElementIndex = e_i_x_1,
-              vertexCounter = v_i_x,
-              edgeCounter = e_i_x_1
-            }
-
-        sFromE =
-          sForE
-            & case x of
-              PT.A {} -> rule4 e
-              PT.App {} -> rule5 t
-              _ -> error "R4: unknown element of locator"
     sOut =
-      case t of
-        [] -> sIn
-        _ -> sIfNotEmptyLocator
+      if null t
+        then sIn
+        else
+          sFromE
+            { focusedElementIndex = focusedElementIndex sIn,
+              gmis = gmisCurrent ++ gmis sFromE,
+              latexedRule =
+                printf
+                  " \\dfrac { e_{%d} | .%s %s %s} { %s %s} R4"
+                  e_i
+                  (latexLine xName)
+                  LC.quad
+                  (xAppObjectLatexed ++ latexedE)
+                  (getLatexedGmis gmisCurrent)
+                  (latexedRule sFromE)
+            }
+          where
+            e_i = focusedElementIndex sIn
+            v_i_x = vertexCounter sIn + 1
+            e_i_x_1 = e_i + 1
+
+            (xName, xAppObjectLatexed) = elementsOfLocatorId x
+
+            latexedE = latexedRemainingLocator e
+            -- latexedRemainingLocator e
+
+            gmisCurrent = [DOT e_i xName v_i_x e_i_x_1]
+
+            sForE =
+              sIn
+                { focusedElementIndex = e_i_x_1,
+                  vertexCounter = v_i_x,
+                  edgeCounter = e_i_x_1
+                }
+
+            sFromE =
+              sForE
+                & case x of
+                  PT.A {} -> rule4 e
+                  PT.App {} -> rule5 t
+                  _ -> error "R4: unknown element of locator"
+    -- sOut =
+    --   case t of
+    --     [] -> sIn
+    --     _ -> sIfNotEmptyLocator
 
 rule5 :: [PT.Term] -> State -> State
 -- rule5 t s = s {latexedRule = " \\text{TODO: R5} " ++ LC.quad}
@@ -372,7 +384,6 @@ rule5 t sIn = sOut
 
 rule6 :: State -> State
 -- rule6 s = s {latexedRule = " \\text{TODO: R6} " ++ LC.quad}
-
 rule6 sIn = sOut
   where
     v_i = focusedElementIndex sIn
@@ -383,10 +394,15 @@ rule6 sIn = sOut
 
     d_i = dataCounter sIn
     gmisCurrent = [ADD d_i, ATOM d_i m, BIND v_i d_i a]
-    sOut = sIn {
-      dataCounter = d_i - 1,
-      gmis = gmisCurrent
-    }
-
--- rule7 :: State -> State
--- rule7 s = s {latexedRule = " \\text{TODO: R7} " ++ LC.quad}
+    sOut =
+      sIn
+        { latexedRule =
+            printf
+              "\\dfrac { v_{%d} | %s \\mapsto %s } { %s } R6"
+              d_i
+              (latexLine a)
+              (latexLine m)
+              (getLatexedGmis gmisCurrent),
+          gmis = gmisCurrent,
+          dataCounter = d_i - 1
+        }

@@ -70,3 +70,25 @@ t6 =
         A"a" `App` [[A"x" `ToLambda` L "Integer\\ 3"]]
       ]
   ]]
+
+t7 :: Term
+t7 =
+  M (A"#") [] [[
+    M (A"a") [A"x"] [[
+      A"y" `ToLocator` [A"$", A"$", A"x"]
+    ]],
+    A"a1"
+      `ToLocator` [
+        A"a" `App` [[A"x" `ToLambda` L "Integer\\ 3"]]
+      ]
+  ]]
+
+t8 :: Term
+t8 =
+  M (A"#") [] [[
+    M (A"a") [A"x"] [[
+      M (A"y") [A"z"] [[A"w" `ToLocator` [A"^", A"x"]]]
+    ]],
+    A"b" `ToLocator` [A"$",A"a" `App` [[A"x" `ToLambda` L "1"]]],
+    A"c" `ToLocator` [A"$",A"b",A"y" `App` [[A"z" `ToLambda` L "3"]]]
+  ]]
