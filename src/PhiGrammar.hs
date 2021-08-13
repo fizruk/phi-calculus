@@ -5,12 +5,14 @@ module PhiGrammar
     Lambda,
     Locator,
     AttributeNameOrCopy,
+    VertexId,
+    FUNCTION(..),
   )
 where
 
 import Data.List (intercalate, intersperse, tails)
 
--- Term Grammar
+-- Phi-Term Grammar
 
 -- | any mapping a > b
 type Mapping = Term
@@ -31,14 +33,14 @@ type Value = [[Mapping]]
 
 type AttributeNameOrCopy = Term
 
--- | list of attribute names and applications
+-- | list of attribute names (with applications)
 type Locator = [AttributeNameOrCopy]
 
 data Term
   = -- | \\s.MCommand
     --
     -- L == Lambda
-    L String
+    L FUNCTION
   | -- | attribute name
     A String
   | -- | App == value is Applied to object
@@ -59,3 +61,15 @@ data Term
     --
     -- a > \s.M
     AttributeName `ToLambda` Lambda
+
+-- | Lambda grammar
+type VertexId = Int
+
+type Stack = [VertexId]
+
+type INT = FUNCTION
+
+data FUNCTION
+  = INTEGER Integer
+  | STRING String
+  | GO (Locator, Stack, Locator)

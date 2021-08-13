@@ -13,9 +13,11 @@ import qualified LatexConstants as LC
     upPhi,
   )
 import PhiGrammar as T
-  ( Mapping,
+  ( FUNCTION (..),
+    Mapping,
     Term (..),
   )
+import Text.Printf (printf)
 
 intercalate' :: [Char] -> [Term] -> [Char]
 intercalate' sep t = intercalate sep (map latexLine t)
@@ -41,7 +43,16 @@ latexLine t =
         "@" -> LC.phi
         _ -> a
     (L l) ->
-      LC.lambdaS ++ l
+      LC.lambdaS
+        ++ case l of
+          INTEGER x -> show x
+          STRING x -> x
+          GO (a, b, c) ->
+            printf
+              "go(%s ++ D(go(s, %s)), %s)"
+              (show b)
+              (toStringLocator a)
+              (toStringLocator c)
     ((A a) `App` [value]) ->
       latexLine (A a) ++ " ( " ++ toStringValue value ++ " ) "
     (M (A a) attributes [value]) ->

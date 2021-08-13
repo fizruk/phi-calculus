@@ -2,7 +2,7 @@ module TransformationRules where
 
 import Commands (Command (..))
 import Data.Function ((&))
-import Data.List (intercalate, tails)
+import Data.List (intercalate, tails, stripPrefix)
 import qualified LatexConstants as LC (ksi, phi, quad, rho, upPhi)
 import LatexLine (latexLine, toStringLocator, toStringSequence, toStringValue)
 import qualified PhiGrammar as PG (AttributeName, Locator, Term (..))
@@ -18,6 +18,7 @@ data State = State
     -- | increment only
     vertexCounter :: Int,
     gmis :: [Command]
+    -- graph::Graph
   }
 
 initialState :: PG.Term -> State
@@ -38,6 +39,8 @@ emptyState =
       vertexCounter = 0,
       gmis = []
     }
+
+-- TODO: graph commands use strings for attribute names
 
 -- putTerm :: Term -> IO ()
 putTerm :: PG.Term -> IO ()
@@ -139,46 +142,45 @@ rule1 sIn = sOut
 --
 -- accumulates changes from terms in some state
 rule2 :: [PG.Term] -> State -> State
-rule2 t s = s {latexedRule = " \\text{TODO: R2} " ++ LC.quad, gmis = []}
+-- rule2 _ _ = emptyState {latexedRule = " \\text{TODO: R2} " ++ LC.quad}
+rule2 terms sIn = sOut
+  where
+    -- transfer from current state and term into the next state
+    combine state term = sCombined
+      where
+        nextState =
+          state {premiseTerm = term, latexedRule = latexedRule emptyState}
+            & case term of
+              PG.M {} -> rule1
+              PG.ToLocator {} -> rule3
+              PG.ToLambda {} -> rule5
+              _ -> error "R2: strange term"
+        sCombined =
+          nextState
+            { latexedRule = latexedRule state ++ latexedRule nextState,
+              gmis = gmis state ++ gmis nextState
+            }
 
--- rule2 terms sIn = sOut
---   where
---     -- transfer from current state and term into the next state
---     combine state term = sCombined
---       where
---         nextState =
---           state {premiseTerm = term, latexedRule = latexedRule emptyState}
---             & case term of
---               PG.M {} -> rule1
---               PG.ToLocator {} -> rule3
---               PG.ToLambda {} -> rule6
---               _ -> error "R2: strange term"
---         sCombined =
---           nextState
---             { latexedRule = latexedRule state ++ latexedRule nextState,
---               gmis = gmis state ++ gmis nextState
---             }
+    -- combine all terms' states into one
+    sCombinedAll = foldl combine sIn terms
 
---     -- combine all terms' states into one
---     sCombinedAll = foldl combine sIn terms
-
---     -- output state from the rule
---     sOut =
---       sCombinedAll
---         { latexedRule =
---             case terms of
---               -- if one element in the list, we don't need R2
---               [_] -> latexedConclusion
---               _ ->
---                 printf
---                   " \\dfrac { v_{%d} | %s } { %s } R2"
---                   (focusedElementIndex sIn)
---                   (toStringSequence terms)
---                   latexedConclusion
---         }
---       where
---         latexedConclusion =
---           printf " %s " (latexedRule sCombinedAll)
+    -- output state from the rule
+    sOut =
+      sCombinedAll
+        { latexedRule =
+            case terms of
+              -- if one element in the list, we don't need R2
+              [_] -> latexedConclusion
+              _ ->
+                printf
+                  " \\dfrac { S = %s | %s } { %s } R2"
+                  (show (stack sIn))
+                  (toStringSequence terms)
+                  latexedConclusion
+        }
+      where
+        latexedConclusion =
+          printf " %s " (latexedRule sCombinedAll)
 
 -- elementsOfLocatorId :: PG.Term -> (PG.AttributeName, [Char])
 -- elementsOfLocatorId x = (xName, xAppObjectLatexed)
@@ -202,23 +204,22 @@ rule2 t s = s {latexedRule = " \\text{TODO: R2} " ++ LC.quad, gmis = []}
 --     [] -> ""
 --     _ -> "." ++ toStringLocator e
 
--- rule3 :: State -> State
--- -- rule3 s = s {latexedRule = " \\text{TODO: R3} " ++ LC.quad}
+rule3 :: State -> State
+rule3 _ = emptyState {latexedRule = " \\text{TODO: R3} " ++ LC.quad}
 -- rule3 sIn = sOut
 --   where
 --     term = premiseTerm sIn
 --     -- a x E from a -> x E
 
---     (a, x, e) =
+--     (a, e) =
 --       case term of
---         a `PG.ToLocator` (x : e) -> (a, x, e)
+--         a `PG.ToLocator` e -> (a, e)
 --         _ -> error "R3: empty locator"
 
---     e_i_a = edgeCounter sIn + 1
---     v_i = focusedElementIndex sIn
-
---     (xName, xAppObjectLatexed) = elementsOfLocatorId x
-
+--     (e1, t) = span (== A _) e
+--     e2 = dropWhileEnd (== A _) t
+--     e3 = stripPrefix e2 t
+    
 --     -- gmis produced by this rule
 --     gmisCurrent = [REF e_i_a v_i xName a]
 
@@ -272,10 +273,10 @@ rule2 t s = s {latexedRule = " \\text{TODO: R2} " ++ LC.quad, gmis = []}
 --               ++ LC.quad
 --         }
 
--- -- no assumptions on start of list
+-- no assumptions on start of list
 
--- rule4 :: [PG.Term] -> State -> State
--- -- rule4 t s = s {latexedRule = " \\text{TODO: R4} " ++ LC.quad}
+rule4 :: [PG.Term] -> State -> State
+rule4 _ _ = emptyState {latexedRule = " \\text{TODO: R4} " ++ LC.quad}
 -- rule4 t sIn = sOut
 --   where
 --     x : e = t
@@ -327,8 +328,8 @@ rule2 t s = s {latexedRule = " \\text{TODO: R2} " ++ LC.quad, gmis = []}
 -- --     [] -> sIn
 -- --     _ -> sIfNotEmptyLocator
 
--- rule5 :: [PG.Term] -> State -> State
--- -- rule5 t s = s {latexedRule = " \\text{TODO: R5} " ++ LC.quad}
+rule5 :: State -> State
+rule5 _ = emptyState {latexedRule = " \\text{TODO: R5} " ++ LC.quad}
 -- rule5 t sIn = sOut
 --   where
 --     (_ `PG.App` [terms]) : e = t
