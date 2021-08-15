@@ -4,7 +4,8 @@ module PhiTerms
     AttributeName,
     Lambda,
     Locator,
-    AttributeNameOrCopy
+    AttributeNameOrCopy,
+    TermSequence
   )
 where
 
@@ -27,7 +28,6 @@ type Value = [[Mapping]]
 type AttributeNameOrCopy = Term
 -- | list of attribute names and applications
 type Locator = [AttributeNameOrCopy]
-
 
 data Term
   = -- | \\s.MCommand
