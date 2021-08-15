@@ -107,60 +107,81 @@ rule3 sIn = sOut
             )
 
     -- a_n, id with application
-    an `App` l = last as
+    an `App` [l] = last as
     dNow = d sIn
 
-    nextState :: State -> Term -> State
-    nextState s bc =
+    nextState :: State -> State
+    nextState s =
       case bc of
         -- P4.1
         M b free [c] ->
-          sEmpty {d = d + 1, list = [M d0 free [rule2 c]]}
+          sEmpty {d = d' + 1, list = [M d0' free [list (rule2 sEmpty {list = c})]]}
         b `ToLocator` c ->
           case stripPrefix pref as of
             -- P4.2
             Nothing ->
-              sEmpty {d = d + 1, list = [d0 `ToLocator` c]}
+              sEmpty {d = d' + 1, list = [d0' `ToLocator` c]}
             -- P4.3
-            _ -> rule4 sEmpty {d = d, term = bc, d0 = d0}
-          where
-            d0 = d0 s
-            d = d s
-            pref = takeTillApplication as
+            _ -> rule4 sEmpty {d = d', term = bc, d0 = d0'}
+        _ ->
+          error
+            ( printf
+                "R3. Wrong term in locator: %s"
+                (latexLine bc)
+            )
+      where
+        bc = term s
+        d0' = d0 s
+        d' = d s
+        pref = takeTillApplication as
 
     -- base for c-s. allocates names d_1, d_2, ..., d_{n+1}
     dAfter = dNow + length l + 1
     sIn1 = sEmpty {d = dAfter}
 
     -- list of results of (d_1)|c_1, ...
-    sOut1 = foldl (\state (id, term) -> sCombined) sIn (zip [0 ..] l)
+    sOut1 = foldl combine sIn1 (zip [0 ..] l)
       where
-        sNext =
-          nextState sEmpty {d = d state, d0 = getName (dNow + id)}
-        sCombined =
+        combine state (id, term) =
           sEmpty {d = d sNext, list = list state ++ list sNext}
+          where
+            sNext =
+              nextState sEmpty {d = d state, d0 = getName (dNow + id), term = term}
+
     cs = list sOut1
 
     -- b_1->d_1, b_2->d_2 ...
-    l' = zipWith (\bc id -> getB bc `ToLocator` getD id) l [0 ..]
+    l' = [an `App` [zipWith (\bc id -> getB bc `ToLocator` [getD id]) l [0 ..]]]
       where
         getB bc =
           case bc of
             M b _ _ -> b
             b `ToLocator` _ -> b
+            _ ->
+              error
+                ( printf
+                    "R3. Wrong term in locator: %s"
+                    (latexLine bc)
+                )
         getD id =
           getName (dNow + id)
 
     -- prefix till application with modified application
-    as' = init as : l'
+    as' = init as ++ l'
     -- name for d_{n+1} helper attribute
-    d_n_plus_1 = getName dAfter -1
-    
-    -- for (c, d_{n+1})|E 
-    sIn2 = emptyState {d = d sOut1, c = c, d0 = d_n_plus_1}
+    d_n_plus_1 = getName (dAfter -1)
+
+    -- for (c, d_{n+1})|E
+    sIn2 = sEmpty {d = d sOut1, c = c, d0 = d_n_plus_1}
     sOut2 = rule5 sIn2
-    
+
     sOut = sEmpty {d = d sOut2, list = (d_n_plus_1 `ToLocator` as') : cs}
 
 getName :: Int -> AttributeName
 getName d = A (printf "_%d" d)
+
+rule4 :: State -> State
+rule4 = const sEmpty {list = [A "R4: to be implemented"]}
+
+rule5 :: State -> State
+rule5 = const sEmpty {list = [A "R5: to be implemented"]}

@@ -5,7 +5,6 @@ module PhiTerms
     Lambda,
     Locator,
     AttributeNameOrCopy,
-    TermSequence
   )
 where
 
@@ -54,3 +53,4 @@ data Term
     --
     -- a > \s.M
     AttributeName `ToLambda` Lambda
+  deriving (Eq)
